@@ -1,0 +1,90 @@
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.ModelList {
+  width: 20%;
+  background-color: #f0f0f0;
+  padding: 10px;
+  overflow-y: auto;
+  max-height: calc(100vh - 50px); /* Adjust height to fit screen */
+}
+
+.CanvasArea {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px dashed #ccc; /* Dashed border to indicate drawing area */
+  margin: 10px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.CanvasArea::before {
+  content: "Draw Here";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ccc;
+  font-size: 24px;
+  pointer-events: none;
+}
+
+.Toolbar {
+  background-color: #f8f8f8;
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+}
+
+.MainContent {
+  display: flex;
+  flex-grow: 1;
+}
+
+.ModelList {
+  width: 20%;
+  background-color: #f0f0f0;
+  padding: 10px;
+}
+
+.ModelList ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.ModelList li {
+  cursor: pointer;
+  padding: 8px;
+  margin: 4px 0;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.ModelList li:hover {
+  background-color: #d0d0d0;
+}
+
+.CanvasArea {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #ccc;
+  margin: 10px;
+  border-radius: 8px;
+}
+
+.PropertiesPanel {
+  width: 20%;
+  background-color: #f0f0f0;
+  padding: 10px;
+}
+
+.App-link {
+  color: #61dafb;
+}
