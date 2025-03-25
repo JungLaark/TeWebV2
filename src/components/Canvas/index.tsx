@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import DrawingTools from '../DrawingTools'; // 추가
 import './Canvas.css';
 
 interface CanvasObject {
@@ -22,6 +23,8 @@ interface CanvasProps {
   onObjectSelect: (object: CanvasObject | null) => void;
   selectedObjectIds: string[];
   setSelectedObjectIds: (ids: string[]) => void;
+  onAddShape: (type: string) => void; // 수정
+  onAddText: () => void;
 }
 
 const Canvas: React.FC<CanvasProps> = ({
@@ -32,7 +35,9 @@ const Canvas: React.FC<CanvasProps> = ({
   onUpdateObjects,
   onObjectSelect,
   selectedObjectIds,
-  setSelectedObjectIds
+  setSelectedObjectIds,
+  onAddShape,
+  onAddText,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -552,86 +557,119 @@ const Canvas: React.FC<CanvasProps> = ({
     setEditingText(null);
   };
 
-  // 휠 이벤트 핸들러
-  const handleWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    const delta = event.deltaY;
-    const scaleChange = delta > 0 ? 0.9 : 1.1; // 휠 방향에 따라 축소/확대
+  // 휠 이벤트 리스너 추가
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const delta = event.deltaY;
+      const scaleChange = delta > 0 ? 0.9 : 1.1;
+      const newScale = Math.min(Math.max(scale * scaleChange, 0.1), 5);
+      setScale(newScale);
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
     
-    // 최소/최대 스케일 제한
-    const newScale = Math.min(Math.max(scale * scaleChange, 0.1), 5);
-    setScale(newScale);
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+    };
+  }, [scale]);
+
+  const calculateFitScale = () => {
+    if (!containerRef.current) return 1;
+    const container = containerRef.current;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    const scaleX = containerWidth / width;
+    const scaleY = containerHeight / height;
+    return Math.min(scaleX, scaleY, 1); // 최대값을 1로 제한
   };
 
+  // 컴포넌트 마운트 시 초기 스케일 설정
+  useEffect(() => {
+    setScale(calculateFitScale());
+  }, [width, height]);
+
   return (
-    <div 
-      ref={containerRef}
-      className="canvas-container"
-      style={{ 
-        width: `${width}px`, 
-        height: `${height}px`,
-        maxWidth: '100%',
-        maxHeight: '100%'
-      }}
-    >
-      <div 
-        className="canvas-wrapper"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onDoubleClick={handleDoubleClick}
-      >
-        <canvas
-          ref={canvasRef}
-          width={width}
-          height={height}
-          className="canvas"
-          style={{
-            transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${scale})`
-          }}
-          onWheel={handleWheel}
-        />
-        {editingText && (
-          <div
-            style={{
-              position: 'absolute',
-              ...getTextInputPosition(editingText.x, editingText.y),
-              zIndex: 1000,
+    <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 overflow-hidden relative">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div 
+            ref={containerRef}
+            className="canvas-container relative"
+            style={{ 
+              width: '100%',  // 여기를 수정
+              height: '100%', // 여기도 수정
+              maxWidth: `${width}px`,  // maxWidth 추가
+              maxHeight: `${height}px` // maxHeight 추가
             }}
           >
-            <input
-              type="text"
-              value={editingText.value}
-              onChange={handleTextInputChange}
-              onBlur={handleTextInputBlur}
-              style={{
-                position: 'relative',
-                background: 'transparent',
-                color: '#FFFFFF',
-                border: '1px solid #00ff00',
-                outline: 'none',
-                fontFamily: 'Arial',
-                fontSize: `${20}px`,
-                padding: '2px',
-                margin: 0,
-                minWidth: '100px'
-              }}
-              autoFocus
-            />
+            <div 
+              className="canvas-wrapper"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onDoubleClick={handleDoubleClick}
+            >
+              <canvas
+                ref={canvasRef}
+                width={width}
+                height={height}
+                className="canvas"
+                style={{
+                  transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${scale})`
+                }}
+              />
+              {editingText && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: getTextInputPosition(editingText.x, editingText.y).left,
+                    top: getTextInputPosition(editingText.x, editingText.y).top,
+                    zIndex: 1000
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={editingText.value}
+                    onChange={handleTextInputChange}
+                    onBlur={handleTextInputBlur}
+                    style={{
+                      position: 'relative',
+                      background: 'transparent',
+                      color: '#FFFFFF',
+                      border: '1px solid #00ff00',
+                      outline: 'none',
+                      fontFamily: 'Arial',
+                      fontSize: `${20}px`,
+                      padding: '2px',
+                      margin: 0,
+                      minWidth: '100px'
+                    }}
+                    autoFocus
+                  />
+                </div>
+              )}
+              {selectionBox.start && selectionBox.end && (
+                <div className="selection-box" style={{
+                  left: Math.min(selectionBox.start.x, selectionBox.end.x),
+                  top: Math.min(selectionBox.start.y, selectionBox.end.y),
+                  width: Math.abs(selectionBox.end.x - selectionBox.start.x),
+                  height: Math.abs(selectionBox.end.y - selectionBox.start.y)
+                }} />
+              )}
+              <div className="scale-indicator"></div>
+                {Math.round(scale * 100)}%
+              </div>
+            </div>
           </div>
-        )}
-        {selectionBox.start && selectionBox.end && (
-          <div className="selection-box" style={{
-            left: Math.min(selectionBox.start.x, selectionBox.end.x),
-            top: Math.min(selectionBox.start.y, selectionBox.end.y),
-            width: Math.abs(selectionBox.end.x - selectionBox.start.x),
-            height: Math.abs(selectionBox.end.y - selectionBox.start.y)
-          }} />
-        )}
-        <div className="scale-indicator">
-          {Math.round(scale * 100)}%
         </div>
+      <div className="w-full bg-gray-800 border-t border-gray-700 mt-auto">
+        <DrawingTools onAddShape={onAddShape} onAddText={onAddText} />
       </div>
     </div>
   );

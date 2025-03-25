@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, Tag } from 'lucide-react';
 import TagList from '../../Objects/TagList';
 import Canvas from '../../components/Canvas';
 import { PropertyPanel } from '../../components/PropertyPanel';
 import { Toolbar } from '../../components/Toolbar';
+import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
 import { TagItem, CanvasObjectProperties } from '../../types';
 
 const Dashboard: React.FC = () => {
@@ -39,15 +40,18 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleAddShape = (type: 'rect' | 'circle' | 'triangle' | 'ellipse' | 'line' | 'polygon' | 'polyline') => {
+  const handleAddShape = (type: string) => {
     if (!selectedTag) return;
+
+    const centerX = selectedTag.width / 2 - 50;
+    const centerY = selectedTag.height / 2 - 50;
 
     const newShape = {
       id: `shape_${Date.now()}`,
-      type: type,
+      type,
       properties: {
-        x: 0,
-        y: 0,
+        x: centerX,
+        y: centerY,
         width: 100,
         height: 100,
         fillColor: '#FFFFFF',
@@ -56,9 +60,9 @@ const Dashboard: React.FC = () => {
         rotation: 0,
         ...(type === 'polygon' || type === 'polyline' ? {
           points: [
-            { x: 0, y: 0 },
-            { x: 100, y: 0 },
-            { x: 50, y: 100 }
+            { x: centerX, y: centerY },
+            { x: centerX + 100, y: centerY },
+            { x: centerX + 50, y: centerY + 100 }
           ]
         } : {})
       }
@@ -67,7 +71,7 @@ const Dashboard: React.FC = () => {
     const currentObjects = tagObjects[selectedTag.name] || [];
     handleUpdateObjects([...currentObjects, newShape]);
     setSelectedObject(newShape);
-    setSelectedObjectIds([newShape.id]); // 새로운 도형의 ID를 선택된 상태로 설정
+    setSelectedObjectIds([newShape.id]);
   };
 
   const handleAddText = () => {
@@ -104,10 +108,20 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-900 text-white">
-      <TagList 
-        onSelectTag={handleTagSelect} 
-        selectedTag={selectedTag?.name}
-      />
+      <div className="w-[200px] h-screen flex flex-col">
+        <div className="p-4 border-b border-gray-700">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Tag size={20} />
+            Tag List
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <TagList 
+            onSelectTag={handleTagSelect} 
+            selectedTag={selectedTag?.name}
+          />
+        </div>
+      </div>
       <div className="flex-1 flex flex-col">
         <Toolbar
           onAddShape={handleAddShape}
@@ -117,8 +131,8 @@ const Dashboard: React.FC = () => {
           onLogout={handleLogout}
         />
         <div className="flex-1 flex">
-          <div className="flex-1">
-            {selectedTag && (
+          <div className="flex-1"> {/* relative 제거 */}
+            {selectedTag ? (
               <div className="flex items-center justify-center h-full">
                 <Canvas
                   width={selectedTag.width}
@@ -129,7 +143,13 @@ const Dashboard: React.FC = () => {
                   onUpdateObjects={handleUpdateObjects}
                   selectedObjectIds={selectedObjectIds}  // Canvas 컴포넌트에 전달
                   setSelectedObjectIds={setSelectedObjectIds}  // Canvas 컴포넌트에 전달
+                  onAddShape={handleAddShape}
+                  onAddText={handleAddText}
                 />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                Select a tag to start editing
               </div>
             )}
           </div>

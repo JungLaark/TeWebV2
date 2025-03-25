@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { TagItem } from '../types';
 
 interface TagListProps {
-  onSelectTag: (tag: { name: string; width: number; height: number }) => void;
+  onSelectTag: (tag: TagItem) => void;
   selectedTag?: string;
   onStateChange?: (tagName: string, state: any) => void; // 상태 변경 콜백 추가
 }
@@ -114,41 +114,46 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, onStateChan
     }
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    const element = e.currentTarget;
+    if (
+      (element.scrollTop === 0 && e.deltaY < 0) ||
+      (element.scrollHeight - element.scrollTop === element.clientHeight && e.deltaY > 0)
+    ) {
+      e.preventDefault();
+    }
+  };
+
   return (
-    <div className="w-64 p-4 h-full flex flex-col">
-      <h1 className="text-xl font-bold mb-4">Tag List</h1>
-      <div className="flex-1 overflow-y-auto">
+    <div className="h-full overflow-y-auto">
+      <div className="p-4">
         {categoryOrder.map(category => (
           categorizedTags[category] && (
             <div key={category} className="mb-2">
               <button
                 onClick={() => toggleCategory(category)}
-                className="w-full flex items-center justify-between p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors mb-1"
+                className="w-full flex items-center justify-between p-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors mb-1"
               >
                 <span className="text-sm font-medium">
                   {category} ({categorizedTags[category].length})
                 </span>
-                {openCategories[category] ? (
-                  <ChevronDown size={16} />
-                ) : (
-                  <ChevronRight size={16} />
-                )}
+                {openCategories[category] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
               {openCategories[category] && (
-                <div className="pl-2 space-y-1 transition-all">
+                <div className="flex flex-col gap-0.5 pl-1"> {/* gap과 padding 줄임 */}
                   {categorizedTags[category].map((tag, index) => (
                     <div
                       key={index}
-                      className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                      className={`w-full p-1.5 rounded-lg cursor-pointer transition-colors ${
                         selectedTag === tag.name
                           ? 'bg-blue-600 hover:bg-blue-500'
                           : 'bg-gray-700 hover:bg-gray-600'
                       }`}
                       onClick={() => handleTagClick(tag)}
                     >
-                      <div className="text-sm">
+                      <div className="text-sm flex items-center justify-between">
                         <span className="font-medium">{tag.name}</span>
-                        <span className="text-xs text-gray-300 ml-2">
+                        <span className="text-xs text-gray-300">
                           ({tag.width}x{tag.height})
                         </span>
                       </div>
