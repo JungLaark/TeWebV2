@@ -1,0 +1,47 @@
+.property-panel {
+  width: 16rem;
+  background-color: #2D3748;
+  padding: 1rem;
+  border-left: 1px solid #4A5568;
+}
+
+.property-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.property-panel-header h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.property-panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.property-panel-content label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.property-panel-content input,
+.property-panel-content select {
+  width: 100%;
+  background-color: #4A5568;
+  color: #FFFFFF;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  border: none;
+  margin-top: 0.25rem;
+}
+
+.property-panel-content input[type="color"] {
+  height: 2rem;
+  padding: 0;
+}

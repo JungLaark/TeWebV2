@@ -1,0 +1,52 @@
+.navbar {
+  width: 16rem;
+  background-color: #2D3748;
+  color: #FFFFFF;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.navbar-header {
+  padding: 1rem;
+}
+
+.navbar-header h2 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tag-item {
+  padding: 0.75rem;
+  background-color: #4A5568;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tag-item:hover {
+  background-color: #3B4252;
+}
+
+.tag-item .tag-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tag-item .tag-info span {
+  font-weight: medium;
+}
+
+.tag-item .tag-info .bookmark {
+  width: 1rem;
+  height: 1rem;
+}
+
+.tag-item .tag-details {
+  font-size: 0.875rem;
+  color: #A0AEC0;
+  margin-top: 0.25rem;
+}
