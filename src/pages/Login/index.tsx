@@ -70,7 +70,7 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-96">
-        <h1 className="text-3xl font-bold text-white mb-6">Template Editor WEB</h1>
+        <h1 className="text-3xl font-bold text-white mb-6 text-center">Template Editor WEB</h1> {/* text-center 추가 */}
 
         {error && (
           <div className="mb-4 p-2 bg-red-500 text-white rounded">
