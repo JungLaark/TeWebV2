@@ -69,10 +69,34 @@ const categorizeTag = (name: string) => {
 
 const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, onStateChange }) => {
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-    '2Color': true,  // 기본적으로 2Color는 열려있도록
+    '2Color': true,
     '3Color': false,
     '4Color': false
   });
+
+  // 숫자를 추출하는 헬퍼 함수
+  const extractNumber = (str: string) => {
+    const match = str.match(/\d+\.?\d*/);
+    return match ? parseFloat(match[0]) : 0;
+  };
+
+  // 태그 목록을 카테고리별로 분류하고 정렬
+  const categorizedTags = tagList.reduce((acc, tag) => {
+    const category = categorizeTag(tag.name);
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(tag);
+    return acc;
+  }, {} as Record<string, typeof tagList>);
+
+  // 각 카테고리 내부의 태그들을 숫자 기준으로 정렬
+  Object.keys(categorizedTags).forEach(category => {
+    categorizedTags[category].sort((a, b) => extractNumber(a.name) - extractNumber(b.name));
+  });
+
+  // 카테고리 순서 정의
+  const categoryOrder = ['2Color', '3Color', '4Color'];
 
   // 카테고리 토글 핸들러
   const toggleCategory = (category: string) => {
@@ -90,58 +114,50 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, onStateChan
     }
   };
 
-  // 태그 목록을 카테고리별로 분류
-  const categorizedTags = tagList.reduce((acc, tag) => {
-    const category = categorizeTag(tag.name);
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(tag);
-    return acc;
-  }, {} as Record<string, typeof tagList>);
-
   return (
     <div className="w-64 p-4 h-full flex flex-col">
       <h1 className="text-xl font-bold mb-4">Tag List</h1>
       <div className="flex-1 overflow-y-auto">
-        {Object.entries(categorizedTags).map(([category, tags]) => (
-          <div key={category} className="mb-2">
-            <button
-              onClick={() => toggleCategory(category)}
-              className="w-full flex items-center justify-between p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors mb-1"
-            >
-              <span className="text-sm font-medium">
-                {category} ({tags.length})
-              </span>
-              {openCategories[category] ? (
-                <ChevronDown size={16} />
-              ) : (
-                <ChevronRight size={16} />
-              )}
-            </button>
-            {openCategories[category] && (
-              <div className="pl-2 space-y-1 transition-all">
-                {tags.map((tag, index) => (
-                  <div
-                    key={index}
-                    className={`p-2 rounded-lg cursor-pointer transition-colors ${
-                      selectedTag === tag.name
-                        ? 'bg-blue-600 hover:bg-blue-500'
-                        : 'bg-gray-700 hover:bg-gray-600'
-                    }`}
-                    onClick={() => handleTagClick(tag)}
-                  >
-                    <div className="text-sm">
-                      <span className="font-medium">{tag.name}</span>
-                      <span className="text-xs text-gray-300 ml-2">
-                        ({tag.width}x{tag.height})
-                      </span>
+        {categoryOrder.map(category => (
+          categorizedTags[category] && (
+            <div key={category} className="mb-2">
+              <button
+                onClick={() => toggleCategory(category)}
+                className="w-full flex items-center justify-between p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors mb-1"
+              >
+                <span className="text-sm font-medium">
+                  {category} ({categorizedTags[category].length})
+                </span>
+                {openCategories[category] ? (
+                  <ChevronDown size={16} />
+                ) : (
+                  <ChevronRight size={16} />
+                )}
+              </button>
+              {openCategories[category] && (
+                <div className="pl-2 space-y-1 transition-all">
+                  {categorizedTags[category].map((tag, index) => (
+                    <div
+                      key={index}
+                      className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                        selectedTag === tag.name
+                          ? 'bg-blue-600 hover:bg-blue-500'
+                          : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                      onClick={() => handleTagClick(tag)}
+                    >
+                      <div className="text-sm">
+                        <span className="font-medium">{tag.name}</span>
+                        <span className="text-xs text-gray-300 ml-2">
+                          ({tag.width}x{tag.height})
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
         ))}
       </div>
     </div>
