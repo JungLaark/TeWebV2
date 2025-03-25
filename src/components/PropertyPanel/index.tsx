@@ -6,12 +6,48 @@ import './PropertyPanel.css';
 interface PropertyPanelProps {
   selectedObject: CanvasObjectProperties | null;
   onUpdateObject: (object: CanvasObjectProperties) => void;
+  selectedTagName?: string; // 새로운 prop 추가
 }
 
 export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   selectedObject,
   onUpdateObject,
+  selectedTagName // 새로운 prop
 }) => {
+  // 색상 옵션 결정 함수 수정
+  const getColorOptions = () => {
+    if (!selectedTagName) {
+      return [
+        { value: '#000000', label: 'Black' },
+        { value: '#FFFFFF', label: 'White' },
+      ];
+    }
+
+    // 선택된 태그 이름으로 색상 옵션 결정
+    const hasRY = selectedTagName.includes('RY');
+    const hasR = selectedTagName.includes('R');
+
+    const baseColors = [
+      { value: '#000000', label: 'Black' },
+      { value: '#FFFFFF', label: 'White' },
+    ];
+
+    if (hasRY) {
+      return [
+        ...baseColors,
+        { value: '#FF0000', label: 'Red' },
+        { value: '#FFFF00', label: 'Yellow' },
+      ];
+    } else if (hasR) {
+      return [
+        ...baseColors,
+        { value: '#FF0000', label: 'Red' },
+      ];
+    }
+
+    return baseColors;
+  };
+
   const handlePropertyChange = (property: string, value: any) => {
     if (!selectedObject) return;
 
@@ -103,6 +139,38 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     }
   };
 
+  // 색상 선택 UI 렌더링 함수
+  const renderColorSelect = (property: string, label: string) => {
+    const colorOptions = getColorOptions();
+    return (
+      <div>
+        <label className="text-xs text-gray-400">{label}</label>
+        <select
+          value={selectedObject?.properties[property] || '#000000'}
+          onChange={(e) => handlePropertyChange(property, e.target.value)}
+          className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
+        >
+          {colorOptions.map(color => (
+            <option key={color.value} value={color.value}>
+              {color.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
+  // Colors 섹션 수정
+  const renderColorsSection = () => (
+    <div>
+      <label className="block text-sm font-medium text-white">Colors</label>
+      <div className="grid grid-cols-2 gap-2 mt-1">
+        {renderColorSelect('penColor', 'Pen Color')}
+        {renderColorSelect('fillColor', 'Fill Color')}
+      </div>
+    </div>
+  );
+
   if (!selectedObject) {
     return (
       <div className="w-64 bg-gray-50 p-4 border-l border-gray-200">
@@ -169,33 +237,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-white">Colors</label>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <div>
-              <label className="text-xs text-gray-400">Pen Color</label>
-              <input
-                type="color"
-                value={selectedObject.properties.penColor}
-                onChange={(e) =>
-                  handlePropertyChange('penColor', e.target.value)
-                }
-                className="block w-full h-8 mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400">Fill Color</label>
-              <input
-                type="color"
-                value={selectedObject.properties.fillColor}
-                onChange={(e) =>
-                  handlePropertyChange('fillColor', e.target.value)
-                }
-                className="block w-full h-8 mt-1"
-              />
-            </div>
-          </div>
-        </div>
+        {renderColorsSection()}
 
         <div>
           <label className="block text-sm font-medium text-white">Rotation</label>

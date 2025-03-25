@@ -135,6 +135,7 @@ const Dashboard: React.FC = () => {
           </div>
           <PropertyPanel
             selectedObject={selectedObject}
+            selectedTagName={selectedTag?.name} // selectedTagName 전달
             onUpdateObject={(updatedObject) => {
               if (!selectedTag) return;
               const currentObjects = tagObjects[selectedTag.name] || [];
