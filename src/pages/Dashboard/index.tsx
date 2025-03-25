@@ -11,10 +11,11 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
   const [selectedObject, setSelectedObject] = useState<CanvasObjectProperties | null>(null);
-  const [objects, setObjects] = useState<CanvasObjectProperties[]>([]);
+  const [tagObjects, setTagObjects] = useState<Record<string, CanvasObjectProperties[]>>({});
 
   const handleTagSelect = (tag: TagItem) => {
     setSelectedTag(tag);
+    setSelectedObject(null);
   };
 
   const handleObjectSelect = (object: CanvasObjectProperties | null) => {
@@ -22,7 +23,13 @@ const Dashboard: React.FC = () => {
   };
 
   const handleUpdateObjects = (newObjects: CanvasObjectProperties[]) => {
-    setObjects(newObjects);
+    if (!selectedTag) return;
+    
+    setTagObjects(prev => ({
+      ...prev,
+      [selectedTag.name]: newObjects
+    }));
+
     if (selectedObject) {
       const updatedSelectedObject = newObjects.find(obj => obj.id === selectedObject.id);
       if (updatedSelectedObject) {
@@ -32,6 +39,8 @@ const Dashboard: React.FC = () => {
   };
 
   const handleAddShape = (type: 'rect' | 'circle' | 'triangle' | 'ellipse' | 'line' | 'polygon' | 'polyline') => {
+    if (!selectedTag) return; // 선택된 태그가 없으면 리턴
+
     const baseProperties = {
       x: 100,
       y: 100,
@@ -64,10 +73,14 @@ const Dashboard: React.FC = () => {
       properties: properties
     };
 
-    setObjects(prevObjects => [...prevObjects, newShape]);
+    // setObjects 대신 handleUpdateObjects 사용
+    const currentObjects = tagObjects[selectedTag.name] || [];
+    handleUpdateObjects([...currentObjects, newShape]);
   };
 
   const handleAddText = () => {
+    if (!selectedTag) return; // 선택된 태그가 없으면 리턴
+
     const newText = {
       id: `text_${Date.now()}`,
       type: 'text',
@@ -80,7 +93,10 @@ const Dashboard: React.FC = () => {
         color: '#FFFFFF',
       }
     };
-    setObjects(prevObjects => [...prevObjects, newText]);
+
+    // setObjects 대신 handleUpdateObjects 사용
+    const currentObjects = tagObjects[selectedTag.name] || [];
+    handleUpdateObjects([...currentObjects, newText]);
   };
 
   const handleLogout = () => {
@@ -98,8 +114,8 @@ const Dashboard: React.FC = () => {
         <Toolbar
           onAddShape={handleAddShape}
           onAddText={handleAddText}
-          onSave={() => console.log('Save clicked', objects)}
-          onExport={() => console.log('Export clicked', objects)}
+          onSave={() => console.log('Save clicked', tagObjects)}
+          onExport={() => console.log('Export clicked', tagObjects)}
           onLogout={handleLogout}
         />
         <div className="flex-1 flex">
@@ -111,7 +127,7 @@ const Dashboard: React.FC = () => {
                   height={selectedTag.height}
                   tagName={selectedTag.name}
                   onObjectSelect={handleObjectSelect}
-                  objects={objects}
+                  objects={tagObjects[selectedTag.name] || []}
                   onUpdateObjects={handleUpdateObjects}
                 />
               </div>
@@ -120,10 +136,13 @@ const Dashboard: React.FC = () => {
           <PropertyPanel
             selectedObject={selectedObject}
             onUpdateObject={(updatedObject) => {
-              setSelectedObject(updatedObject);
-              setObjects(objects.map(obj => 
+              if (!selectedTag) return;
+              const currentObjects = tagObjects[selectedTag.name] || [];
+              const updatedObjects = currentObjects.map(obj => 
                 obj.id === updatedObject.id ? updatedObject : obj
-              ));
+              );
+              handleUpdateObjects(updatedObjects);
+              setSelectedObject(updatedObject);
             }}
           />
         </div>
