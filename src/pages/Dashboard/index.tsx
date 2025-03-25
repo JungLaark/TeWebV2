@@ -12,6 +12,7 @@ const Dashboard: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
   const [selectedObject, setSelectedObject] = useState<CanvasObjectProperties | null>(null);
   const [tagObjects, setTagObjects] = useState<Record<string, CanvasObjectProperties[]>>({});
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
 
   const handleTagSelect = (tag: TagItem) => {
     setSelectedTag(tag);
@@ -39,64 +40,61 @@ const Dashboard: React.FC = () => {
   };
 
   const handleAddShape = (type: 'rect' | 'circle' | 'triangle' | 'ellipse' | 'line' | 'polygon' | 'polyline') => {
-    if (!selectedTag) return; // 선택된 태그가 없으면 리턴
-
-    const baseProperties = {
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-      fillColor: '#FFFFFF',
-      strokeColor: '#000000',
-      strokeWidth: 2,
-      rotation: 0
-    };
-
-    let properties;
-    
-    if (type === 'polygon' || type === 'polyline') {
-      properties = {
-        ...baseProperties,
-        points: [
-          { x: 100, y: 100 },
-          { x: 200, y: 100 },
-          { x: 150, y: 200 }
-        ]
-      };
-    } else {
-      properties = baseProperties;
-    }
+    if (!selectedTag) return;
 
     const newShape = {
       id: `shape_${Date.now()}`,
       type: type,
-      properties: properties
+      properties: {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        fillColor: '#FFFFFF',
+        strokeColor: '#000000',
+        strokeWidth: 2,
+        rotation: 0,
+        ...(type === 'polygon' || type === 'polyline' ? {
+          points: [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+            { x: 50, y: 100 }
+          ]
+        } : {})
+      }
     };
 
-    // setObjects 대신 handleUpdateObjects 사용
     const currentObjects = tagObjects[selectedTag.name] || [];
     handleUpdateObjects([...currentObjects, newShape]);
+    setSelectedObject(newShape);
+    setSelectedObjectIds([newShape.id]); // 새로운 도형의 ID를 선택된 상태로 설정
   };
 
   const handleAddText = () => {
-    if (!selectedTag) return; // 선택된 태그가 없으면 리턴
+    if (!selectedTag) return;
 
     const newText = {
       id: `text_${Date.now()}`,
       type: 'text',
       properties: {
-        x: 100,
-        y: 100,
-        text: 'New Text',
+        x: 0,
+        y: 0,
+        text: 'Double click to edit',  // 변경된 기본 텍스트
         fontSize: 20,
         fontFamily: 'Arial',
-        color: '#FFFFFF',
+        fillColor: '#FFFFFF',
+        strokeColor: '#000000',
+        strokeWidth: 1,
+        rotation: 0,
+        width: 200,  // 텍스트 박스 기본 크기 증가
+        height: 30
       }
     };
 
-    // setObjects 대신 handleUpdateObjects 사용
     const currentObjects = tagObjects[selectedTag.name] || [];
     handleUpdateObjects([...currentObjects, newText]);
+    setSelectedObject(newText);
+    setSelectedObjectIds([newText.id]);
   };
 
   const handleLogout = () => {
@@ -129,6 +127,8 @@ const Dashboard: React.FC = () => {
                   onObjectSelect={handleObjectSelect}
                   objects={tagObjects[selectedTag.name] || []}
                   onUpdateObjects={handleUpdateObjects}
+                  selectedObjectIds={selectedObjectIds}  // Canvas 컴포넌트에 전달
+                  setSelectedObjectIds={setSelectedObjectIds}  // Canvas 컴포넌트에 전달
                 />
               </div>
             )}

@@ -20,6 +20,8 @@ interface CanvasProps {
   objects: CanvasObject[];
   onUpdateObjects: (objects: CanvasObject[]) => void;
   onObjectSelect: (object: CanvasObject | null) => void;
+  selectedObjectIds: string[];
+  setSelectedObjectIds: (ids: string[]) => void;
 }
 
 const Canvas: React.FC<CanvasProps> = ({
@@ -28,7 +30,9 @@ const Canvas: React.FC<CanvasProps> = ({
   tagName,
   objects,
   onUpdateObjects,
-  onObjectSelect
+  onObjectSelect,
+  selectedObjectIds,
+  setSelectedObjectIds
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +52,12 @@ const Canvas: React.FC<CanvasProps> = ({
   const [rotateStartAngle, setRotateStartAngle] = useState(0);
   const [cursorDirection, setCursorDirection] = useState<string | null>(null);
   const [selectionBox, setSelectionBox] = useState<{ start: { x: number; y: number } | null, end: { x: number; y: number } | null}>({ start: null, end: null });
-  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
+  const [editingText, setEditingText] = useState<{
+    id: string;
+    x: number;
+    y: number;
+    value: string;
+  } | null>(null);
 
   // Constants
   const HANDLE_SIZE = 8;
@@ -288,7 +297,7 @@ const Canvas: React.FC<CanvasProps> = ({
     ctx.rotate(rotation);
     ctx.translate(-centerX, -centerY);
 
-    // 선택된 객체 표시
+    // 선택된 객체 표시를 selectedObjectIds 기반으로 처리
     if (selectedObjectIds.includes(object.id)) {
       ctx.strokeStyle = '#00ff00';
       ctx.lineWidth = 2;
@@ -341,9 +350,22 @@ const Canvas: React.FC<CanvasProps> = ({
         break;
 
       case 'text':
-        ctx.fillStyle = object.properties.color || '#FFFFFF';
-        ctx.font = `${object.properties.fontSize}px ${object.properties.fontFamily}`;
-        ctx.fillText(object.properties.text || '', x, y);
+        const { text, fontSize, fontFamily, fillColor } = object.properties;
+        // 편집 중인 텍스트는 그리지 않음
+        if (editingText && object.id === editingText.id) {
+          return;
+        }
+        ctx.fillStyle = fillColor || '#FFFFFF';
+        ctx.font = `${fontSize}px ${fontFamily}`;
+        ctx.textBaseline = 'top';
+        ctx.fillText(text || '', x, y);
+        
+        // 선택된 객체일 때만 경계 상자 표시
+        if (selectedObjectIds.includes(object.id)) {
+          ctx.strokeStyle = object.properties.strokeColor;
+          ctx.lineWidth = object.properties.strokeWidth;
+          ctx.strokeRect(x, y, width, height);
+        }
         break;
 
       case 'polygon':
@@ -445,6 +467,102 @@ const Canvas: React.FC<CanvasProps> = ({
     };
   };
 
+  const handleDoubleClick = (event: React.MouseEvent) => {
+    const mousePos = getCanvasMousePosition(event);
+    if (!mousePos) return;
+
+    const clickedObject = objects.find(obj => {
+      if (obj.type !== 'text') return false;
+      const { x, y, width, height } = obj.properties;
+      return isPointInObject(mousePos, obj);
+    });
+
+    if (clickedObject && clickedObject.type === 'text') {
+      // 선택된 텍스트 객체의 정확한 위치 정보 저장
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      setEditingText({
+        id: clickedObject.id,
+        x: clickedObject.properties.x,
+        y: clickedObject.properties.y,
+        value: clickedObject.properties.text || ''
+      });
+    }
+  };
+
+  // editingText 상태의 위치를 업데이트하는 useEffect 추가
+  useEffect(() => {
+    if (editingText) {
+      const editedObject = objects.find(obj => obj.id === editingText.id);
+      if (editedObject) {
+        setEditingText(prev => ({
+          ...prev!,
+          x: editedObject.properties.x,
+          y: editedObject.properties.y
+        }));
+      }
+    }
+  }, [objects, editingText?.id]);
+
+  // 텍스트 입력 UI 위치 계산 함수 수정
+  const getTextInputPosition = (x: number, y: number) => {
+    const canvas = canvasRef.current;
+    const wrapper = canvas?.parentElement;
+    if (!canvas || !wrapper) return { left: 0, top: 0 };
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const wrapperRect = wrapper.getBoundingClientRect();
+
+    // 캔버스의 실제 위치와 스케일을 고려한 계산
+    const scaledX = x * scale;
+    const scaledY = y * scale;
+    
+    return {
+      left: scaledX + canvasRect.left - wrapperRect.left,
+      top: scaledY + canvasRect.top - wrapperRect.top
+    };
+  };
+
+  // 텍스트 입력 처리 함수 수정
+  const handleTextInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingText) return;
+
+    const updatedObjects = objects.map(obj => {
+      if (obj.id === editingText.id) {
+        return {
+          ...obj,
+          properties: {
+            ...obj.properties,
+            text: e.target.value
+          }
+        };
+      }
+      return obj;
+    });
+
+    onUpdateObjects(updatedObjects);
+    setEditingText(prev => ({
+      ...prev!,
+      value: e.target.value
+    }));
+  };
+
+  const handleTextInputBlur = () => {
+    setEditingText(null);
+  };
+
+  // 휠 이벤트 핸들러
+  const handleWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    const delta = event.deltaY;
+    const scaleChange = delta > 0 ? 0.9 : 1.1; // 휠 방향에 따라 축소/확대
+    
+    // 최소/최대 스케일 제한
+    const newScale = Math.min(Math.max(scale * scaleChange, 0.1), 5);
+    setScale(newScale);
+  };
+
   return (
     <div 
       ref={containerRef}
@@ -462,6 +580,7 @@ const Canvas: React.FC<CanvasProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
       >
         <canvas
           ref={canvasRef}
@@ -471,7 +590,37 @@ const Canvas: React.FC<CanvasProps> = ({
           style={{
             transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${scale})`
           }}
+          onWheel={handleWheel}
         />
+        {editingText && (
+          <div
+            style={{
+              position: 'absolute',
+              ...getTextInputPosition(editingText.x, editingText.y),
+              zIndex: 1000,
+            }}
+          >
+            <input
+              type="text"
+              value={editingText.value}
+              onChange={handleTextInputChange}
+              onBlur={handleTextInputBlur}
+              style={{
+                position: 'relative',
+                background: 'transparent',
+                color: '#FFFFFF',
+                border: '1px solid #00ff00',
+                outline: 'none',
+                fontFamily: 'Arial',
+                fontSize: `${20}px`,
+                padding: '2px',
+                margin: 0,
+                minWidth: '100px'
+              }}
+              autoFocus
+            />
+          </div>
+        )}
         {selectionBox.start && selectionBox.end && (
           <div className="selection-box" style={{
             left: Math.min(selectionBox.start.x, selectionBox.end.x),

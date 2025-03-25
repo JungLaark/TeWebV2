@@ -209,29 +209,40 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           />
         </div>
 
-        {selectedObject.Type === 'Text' && (
+        {selectedObject.type === 'text' && (
           <>
             <div>
-              <label className="block text-sm font-medium text-white">Text</label>
+              <label className="block text-sm font-medium text-white">Text Content</label>
               <input
                 type="text"
                 value={selectedObject.properties.text || ''}
-                onChange={(e) =>
-                  handlePropertyChange('text', e.target.value)
-                }
+                onChange={(e) => handlePropertyChange('text', e.target.value)}
                 className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-white">Font</label>
+              <label className="block text-sm font-medium text-white">Font Size</label>
               <input
-                type="text"
-                value={selectedObject.properties.font}
-                onChange={(e) =>
-                  handlePropertyChange('font', e.target.value)
-                }
+                type="number"
+                value={selectedObject.properties.fontSize || 20}
+                onChange={(e) => handlePropertyChange('fontSize', Number(e.target.value))}
                 className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
+                min="1"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white">Font Family</label>
+              <select
+                value={selectedObject.properties.fontFamily || 'Arial'}
+                onChange={(e) => handlePropertyChange('fontFamily', e.target.value)}
+                className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
+              >
+                <option value="Arial">Arial</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+              </select>
             </div>
           </>
         )}
