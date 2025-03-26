@@ -57,12 +57,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onLoadFromCoreESN
 }) => {
   return (
-    <div className="bg-gray-800 p-2 border-b border-gray-700 flex items-center">
-      {/* 왼쪽 여백 */}
-      <div className="w-1/4" />
-
-      {/* 중앙 정렬된 도구 메뉴 */}
-      <div className="flex-1 flex justify-center space-x-2">
+    <div className="bg-gray-800 p-2 border-b border-gray-700 flex justify-center">
+      <div className="flex space-x-2 -ml-[60px]"> {/* -ml-[60px] 추가 */}
         <button onClick={onManageCSV} className="toolbar-button" title="Manage CSV">
           <FileText size={18} />
         </button>
@@ -94,13 +90,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </button>
         <button onClick={onLoadFromCoreESN} className="toolbar-button" title="Load from CORE/ESN">
           <DownloadCloud size={18} />
-        </button>
-      </div>
-
-      {/* 오른쪽 여백 */}
-      <div className="w-1/4 flex justify-end">
-        <button onClick={onLogout} className="toolbar-button" title="Logout">
-          <LogOut size={18} />
         </button>
       </div>
     </div>

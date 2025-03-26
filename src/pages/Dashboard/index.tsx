@@ -107,22 +107,9 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
-      <div className="w-[200px] h-screen flex flex-col">
-        <div className="p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Tag size={20} />
-            Tag List
-          </h2>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <TagList 
-            onSelectTag={handleTagSelect} 
-            selectedTag={selectedTag?.name}
-          />
-        </div>
-      </div>
-      <div className="flex-1 flex flex-col">
+    <div className="flex flex-col h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <header>
         <Toolbar
           onAddShape={handleAddShape}
           onAddText={handleAddText}
@@ -130,32 +117,55 @@ const Dashboard: React.FC = () => {
           onExport={() => console.log('Export clicked', tagObjects)}
           onLogout={handleLogout}
         />
-        <div className="flex-1 flex">
-          <div className="flex-1"> {/* relative 제거 */}
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - TagList */}
+        <div className="w-[200px] flex flex-col border-r border-gray-700">
+          <div className="p-4 border-b border-gray-700">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Tag size={20} />
+              Tag List
+            </h2>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <TagList 
+              onSelectTag={handleTagSelect} 
+              selectedTag={selectedTag?.name}
+            />
+          </div>
+        </div>
+
+        {/* Center - Canvas */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex items-center justify-center">
             {selectedTag ? (
-              <div className="flex items-center justify-center h-full">
-                <Canvas
-                  width={selectedTag.width}
-                  height={selectedTag.height}
-                  tagName={selectedTag.name}
-                  onObjectSelect={handleObjectSelect}
-                  objects={tagObjects[selectedTag.name] || []}
-                  onUpdateObjects={handleUpdateObjects}
-                  selectedObjectIds={selectedObjectIds}  // Canvas 컴포넌트에 전달
-                  setSelectedObjectIds={setSelectedObjectIds}  // Canvas 컴포넌트에 전달
-                  onAddShape={handleAddShape}
-                  onAddText={handleAddText}
-                />
-              </div>
+              <Canvas
+                width={selectedTag.width}
+                height={selectedTag.height}
+                tagName={selectedTag.name}
+                onObjectSelect={handleObjectSelect}
+                objects={tagObjects[selectedTag.name] || []}
+                onUpdateObjects={handleUpdateObjects}
+                selectedObjectIds={selectedObjectIds}
+                setSelectedObjectIds={setSelectedObjectIds}
+                onAddShape={handleAddShape}
+                onAddText={handleAddText}
+              />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="text-gray-500">
                 Select a tag to start editing
               </div>
             )}
           </div>
+        </div>
+
+        {/* Right Sidebar - PropertyPanel */}
+        <div className="w-[250px] border-l border-gray-700">
           <PropertyPanel
             selectedObject={selectedObject}
-            selectedTagName={selectedTag?.name} // selectedTagName 전달
+            selectedTagName={selectedTag?.name}
             onUpdateObject={(updatedObject) => {
               if (!selectedTag) return;
               const currentObjects = tagObjects[selectedTag.name] || [];
@@ -168,6 +178,14 @@ const Dashboard: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-700">
+        <DrawingTools 
+          onAddShape={handleAddShape}
+          onAddText={handleAddText}
+        />
+      </footer>
     </div>
   );
 };

@@ -668,9 +668,6 @@ const Canvas: React.FC<CanvasProps> = ({
             </div>
           </div>
         </div>
-      <div className="w-full bg-gray-800 border-t border-gray-700 mt-auto">
-        <DrawingTools onAddShape={onAddShape} onAddText={onAddText} />
-      </div>
     </div>
   );
 };
