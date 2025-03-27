@@ -7,6 +7,7 @@ import { PropertyPanel } from '../../components/PropertyPanel';
 import { Toolbar } from '../../components/Toolbar';
 import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
 import { TagItem, CanvasObjectProperties } from '../../types';
+import ManageCSVPopup from '../../components/Popup/ManageCSVPopup';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const Dashboard: React.FC = () => {
   const [selectedObject, setSelectedObject] = useState<CanvasObjectProperties | null>(null);
   const [tagObjects, setTagObjects] = useState<Record<string, CanvasObjectProperties[]>>({});
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
+  const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
 
   const handleTagSelect = (tag: TagItem) => {
     setSelectedTag(tag);
@@ -106,12 +108,16 @@ const Dashboard: React.FC = () => {
     window.location.href = '/login';  // navigate 대신 location.href 사용
   };
 
+  const handleManageCSV = () => {
+    setIsCSVPopupOpen(true);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
       {/* Header - 관리 메뉴만 포함 */}
       <header>
         <Toolbar
-          onManageCSV={() => console.log('CSV')}
+          onManageCSV={handleManageCSV}
           onManageFonts={() => console.log('Fonts')}
           onManageImageCodes={() => console.log('Images')}
           onManageReservations={() => console.log('Reservations')}
@@ -192,6 +198,12 @@ const Dashboard: React.FC = () => {
           onAddText={handleAddText}
         />
       </footer>
+
+      {/* Add CSV Popup */}
+      <ManageCSVPopup 
+        isOpen={isCSVPopupOpen}
+        onClose={() => setIsCSVPopupOpen(false)}
+      />
     </div>
   );
 };
