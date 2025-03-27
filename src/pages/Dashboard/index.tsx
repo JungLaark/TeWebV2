@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../../store';
+import { setTagObjects, addObjectToTag } from '../../store/tagObjectsSlice';
 import { LogOut, Tag } from 'lucide-react';
 import TagList from '../../Objects/TagList';
 import Canvas from '../../components/Canvas';
 import { PropertyPanel } from '../../components/PropertyPanel';
 import { Toolbar } from '../../components/Toolbar';
-import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
+import DrawingTools from '../../components/DrawingTools';
 import { TagItem, CanvasObjectProperties } from '../../types';
 import ManageCSVPopup from '../../components/Popup/ManageCSVPopup';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
+
   const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
   const [selectedObject, setSelectedObject] = useState<CanvasObjectProperties | null>(null);
-  const [tagObjects, setTagObjects] = useState<Record<string, CanvasObjectProperties[]>>({});
-  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
   const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
 
   const handleTagSelect = (tag: TagItem) => {
@@ -28,11 +33,7 @@ const Dashboard: React.FC = () => {
 
   const handleUpdateObjects = (newObjects: CanvasObjectProperties[]) => {
     if (!selectedTag) return;
-    
-    setTagObjects(prev => ({
-      ...prev,
-      [selectedTag.name]: newObjects
-    }));
+    dispatch(setTagObjects({ tagName: selectedTag.name, objects: newObjects }));
 
     if (selectedObject) {
       const updatedSelectedObject = newObjects.find(obj => obj.id === selectedObject.id);
@@ -70,8 +71,7 @@ const Dashboard: React.FC = () => {
       }
     };
 
-    const currentObjects = tagObjects[selectedTag.name] || [];
-    handleUpdateObjects([...currentObjects, newShape]);
+    dispatch(addObjectToTag({ tagName: selectedTag.name, object: newShape }));
     setSelectedObject(newShape);
     setSelectedObjectIds([newShape.id]);
   };
@@ -85,27 +85,26 @@ const Dashboard: React.FC = () => {
       properties: {
         x: 0,
         y: 0,
-        text: 'Double click to edit',  // 변경된 기본 텍스트
+        text: 'Double click to edit',
         fontSize: 20,
         fontFamily: 'Arial',
         fillColor: '#FFFFFF',
         strokeColor: '#000000',
         strokeWidth: 1,
         rotation: 0,
-        width: 200,  // 텍스트 박스 기본 크기 증가
-        height: 30
-      }
+        width: 200,
+        height: 30,
+      },
     };
 
-    const currentObjects = tagObjects[selectedTag.name] || [];
-    handleUpdateObjects([...currentObjects, newText]);
+    dispatch(addObjectToTag({ tagName: selectedTag.name, object: newText }));
     setSelectedObject(newText);
     setSelectedObjectIds([newText.id]);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
-    window.location.href = '/login';  // navigate 대신 location.href 사용
+    window.location.href = '/login';
   };
 
   const handleManageCSV = () => {
