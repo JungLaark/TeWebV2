@@ -108,13 +108,19 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Header */}
+      {/* Header - 관리 메뉴만 포함 */}
       <header>
         <Toolbar
-          onAddShape={handleAddShape}
-          onAddText={handleAddText}
-          onSave={() => console.log('Save clicked', tagObjects)}
-          onExport={() => console.log('Export clicked', tagObjects)}
+          onManageCSV={() => console.log('CSV')}
+          onManageFonts={() => console.log('Fonts')}
+          onManageImageCodes={() => console.log('Images')}
+          onManageReservations={() => console.log('Reservations')}
+          onLoadTemplate={() => console.log('Load')}
+          onMergeTemplates={() => console.log('Merge')}
+          onSaveTemplate={() => console.log('Save')}
+          onExportBitmap={() => console.log('Export')}
+          onSendToCoreESN={() => console.log('Send')}
+          onLoadFromCoreESN={() => console.log('Load')}
           onLogout={handleLogout}
         />
       </header>
@@ -122,7 +128,7 @@ const Dashboard: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - TagList */}
-        <div className="w-[200px] flex flex-col border-r border-gray-700">
+        <div className="w-[250px] flex flex-col border-r border-gray-700">
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Tag size={20} />
