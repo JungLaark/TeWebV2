@@ -2,28 +2,33 @@ import React, { useRef, useEffect, useState } from 'react';
 import DrawingTools from '../DrawingTools'; // 추가
 import './Canvas.css';
 
-interface CanvasObject {
-  id: string;
-  type: string;
-  properties: any;
-}
-
-interface CanvasState {
-  objects: CanvasObject[];
-  scale: number;
-  position: { x: number; y: number };
+interface CanvasObjectProperties {
+  PosX: number;
+  PosY: number;
+  Width: number;
+  Height: number;
+  Rotation?: number;
+  FillColor?: string;
+  PenColor?: string;
+  PenWidth?: number;
+  Type: string;
+  Text?: string;
+  FontSize?: number;
+  FontFamily?: string;
+  Points?: { x: number; y: number }[];
+  IsFilled?: boolean; // 추가
 }
 
 interface CanvasProps {
   width: number;
   height: number;
   tagName: string;
-  objects: CanvasObject[];
-  onUpdateObjects: (objects: CanvasObject[]) => void;
-  onObjectSelect: (object: CanvasObject | null) => void;
+  objects: CanvasObjectProperties[]; // 타입 수정
+  onUpdateObjects: (objects: CanvasObjectProperties[]) => void;
+  onObjectSelect: (object: CanvasObjectProperties | null) => void;
   selectedObjectIds: string[];
   setSelectedObjectIds: (ids: string[]) => void;
-  onAddShape: (type: string) => void; // 수정
+  onAddShape: (type: string) => void;
   onAddText: () => void;
 }
 
@@ -45,7 +50,6 @@ const Canvas: React.FC<CanvasProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [canvasStates, setCanvasStates] = useState<Record<string, CanvasState>>({});
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStartPos, setResizeStartPos] = useState({ x: 0, y: 0 });
@@ -68,43 +72,30 @@ const Canvas: React.FC<CanvasProps> = ({
   const HANDLE_SIZE = 8;
   const HANDLE_HITBOX = 10;
 
-  // 캔버스 초기화 및 렌더링
-  useEffect(() => {
+  // 캔버스의 실제 좌표로 변환하는 함수 수정
+  const convertToCanvasCoordinates = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
+    if (!canvas) return null;
 
-    canvas.width = width;
-    canvas.height = height;
-    ctx.clearRect(0, 0, width, height);
-    objects.forEach(obj => drawObject(ctx, obj));
-  }, [width, height, objects]);
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
 
-  // 객체 내부의 점인지 확인하는 헬퍼 함수
-  const isPointInObject = (point: { x: number; y: number }, object: CanvasObject) => {
-    const { x, y, width, height } = object.properties;
-    return (
-      point.x >= x &&
-      point.x <= x + width &&
-      point.y >= y &&
-      point.y <= y + height
-    );
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
   };
 
-  // 커서 스타일 결정 함수
-  const getCursor = () => {
-    if (draggingMode === 'object') return 'move';
-    if (draggingMode === 'canvas') return 'grabbing';
-    return 'grab';
-  };
-
-  // 마우스 이벤트 핸들러들
+  // 마우스 이벤트 핸들러 수정
   const handleMouseDown = (event: React.MouseEvent) => {
     event.preventDefault();
-    const mousePos = getCanvasMousePosition(event);
+    const mousePos = convertToCanvasCoordinates(event.clientX, event.clientY);
     if (!mousePos) return;
 
-    // 리사이즈 핸들 체크를 먼저 수행
+    console.log('Mouse down at:', mousePos);
+
+    // 선택된 객체의 리사이즈 핸들 체크
     if (selectedObjectId) {
       const selectedObject = objects.find(obj => obj.id === selectedObjectId);
       if (selectedObject) {
@@ -115,6 +106,7 @@ const Canvas: React.FC<CanvasProps> = ({
             Math.pow(mousePos.y - handle.y, 2)
           );
           if (distance < HANDLE_HITBOX) {
+            console.log('Resize handle grabbed:', direction);
             setDraggingMode('resize');
             setResizeStartPos(mousePos);
             setCursorDirection(direction);
@@ -124,145 +116,189 @@ const Canvas: React.FC<CanvasProps> = ({
       }
     }
 
+    // 객체 선택 체크
     const hoveredObject = objects.find(obj => isPointInObject(mousePos, obj));
     
-    if (!hoveredObject) {
-      // 빈 영역 클릭 시 무조건 선택 초기화
+    if (hoveredObject) {
+      console.log('Object selected:', hoveredObject);
+      setSelectedObjectId(hoveredObject.id);
+      onObjectSelect(hoveredObject);
+      setDraggingMode('object');
+      setDragObject({
+        id: hoveredObject.id,
+        startX: mousePos.x - hoveredObject.PosX,
+        startY: mousePos.y - hoveredObject.PosY
+      });
+      setSelectedObjectIds([hoveredObject.id]);
+    } else {
       if (!event.shiftKey) {
         setSelectedObjectIds([]);
         setSelectedObjectId(null);
         onObjectSelect(null);
       }
-      
-      // 드래그 시작 시에만 selection mode 활성화
-      if (event.button === 0) { // 좌클릭일 때만
-        setDraggingMode('selection');
-        setSelectionBox({ 
-          start: { x: mousePos.x, y: mousePos.y }, 
-          end: { x: mousePos.x, y: mousePos.y } 
-        });
-      }
-      return;
     }
-
-    setSelectedObjectId(hoveredObject.id);
-    onObjectSelect(hoveredObject);
-    setDraggingMode('object');
-    setDragObject({
-      id: hoveredObject.id,
-      startX: mousePos.x - hoveredObject.properties.x,
-      startY: mousePos.y - hoveredObject.properties.y
-    });
   };
 
   const handleMouseMove = (event: React.MouseEvent) => {
-    const mousePos = getCanvasMousePosition(event);
+    const mousePos = convertToCanvasCoordinates(event.clientX, event.clientY);
     if (!mousePos || !draggingMode) return;
 
-    if (draggingMode === 'selection' && selectionBox.start) {
-      setSelectionBox(prev => ({
-        ...prev,
-        end: { x: mousePos.x, y: mousePos.y }
-      }));
-
-      // 선택 영역 내의 객체들 찾기
-      const boxLeft = Math.min(selectionBox.start.x, mousePos.x);
-      const boxRight = Math.max(selectionBox.start.x, mousePos.x);
-      const boxTop = Math.min(selectionBox.start.y, mousePos.y);
-      const boxBottom = Math.max(selectionBox.start.y, mousePos.y);
-
-      const selectedIds = objects.filter(obj => {
-        const { x, y, width, height } = obj.properties;
-        return (
-          x < boxRight &&
-          x + width > boxLeft &&
-          y < boxBottom &&
-          y + height > boxTop
-        );
-      }).map(obj => obj.id);
-
-      if (event.shiftKey) {
-        setSelectedObjectIds(prev => 
-          Array.from(new Set([...prev, ...selectedIds]))
-        );
-      } else {
-        setSelectedObjectIds(selectedIds);
-      }
-    } else if (draggingMode === 'object' && dragObject) {
-      const updatedObjects = objects.map(obj => {
-        if (obj.id === dragObject.id) {
-          return {
-            ...obj,
-            properties: {
-              ...obj.properties,
-              x: mousePos.x - dragObject.startX,
-              y: mousePos.y - dragObject.startY
-            }
-          };
-        }
-        return obj;
-      });
-      onUpdateObjects(updatedObjects);
-    } else if (draggingMode === 'resize' && selectedObjectId) {
+    if (draggingMode === 'resize' && selectedObjectId) {
       const selectedObject = objects.find(obj => obj.id === selectedObjectId);
-      if (!selectedObject) return;
+      if (!selectedObject || !resizeStartPos) return;
 
-      const { x, y, width, height } = selectedObject.properties;
-      const dx = mousePos.x - (resizeStartPos?.x || 0);
-      const dy = mousePos.y - (resizeStartPos?.y || 0);
+      console.log('Resizing:', { direction: cursorDirection, mousePos, selectedObject });
 
-      let newProps = { ...selectedObject.properties };
+      const dx = mousePos.x - resizeStartPos.x;
+      const dy = mousePos.y - resizeStartPos.y;
+
+      let newProps = { ...selectedObject };
 
       switch (cursorDirection) {
         case 'n':
-          newProps.y = y + dy;
-          newProps.height = height - dy;
+          newProps.PosY = selectedObject.PosY + dy;
+          newProps.Height = Math.max(10, selectedObject.Height - dy);
           break;
         case 's':
-          newProps.height = height + dy;
+          newProps.Height = Math.max(10, selectedObject.Height + dy);
           break;
         case 'e':
-          newProps.width = width + dx;
+          newProps.Width = Math.max(10, selectedObject.Width + dx);
           break;
         case 'w':
-          newProps.x = x + dx;
-          newProps.width = width - dx;
+          newProps.PosX = selectedObject.PosX + dx;
+          newProps.Width = Math.max(10, selectedObject.Width - dx);
           break;
         case 'nw':
-          newProps.x = x + dx;
-          newProps.y = y + dy;
-          newProps.width = width - dx;
-          newProps.height = height - dy;
+          newProps.PosX = selectedObject.PosX + dx;
+          newProps.PosY = selectedObject.PosY + dy;
+          newProps.Width = Math.max(10, selectedObject.Width - dx);
+          newProps.Height = Math.max(10, selectedObject.Height - dy);
           break;
         case 'ne':
-          newProps.y = y + dy;
-          newProps.width = width + dx;
-          newProps.height = height - dy;
+          newProps.Width = Math.max(10, selectedObject.Width + dx);
+          newProps.PosY = selectedObject.PosY + dy;
+          newProps.Height = Math.max(10, selectedObject.Height - dy);
           break;
         case 'sw':
-          newProps.x = x + dx;
-          newProps.width = width - dx;
-          newProps.height = height + dy;
+          newProps.PosX = selectedObject.PosX + dx;
+          newProps.Width = Math.max(10, selectedObject.Width - dx);
+          newProps.Height = Math.max(10, selectedObject.Height + dy);
           break;
         case 'se':
-          newProps.width = width + dx;
-          newProps.height = height + dy;
+          newProps.Width = Math.max(10, selectedObject.Width + dx);
+          newProps.Height = Math.max(10, selectedObject.Height + dy);
           break;
       }
 
-      // 최소 크기 제한
-      newProps.width = Math.max(10, newProps.width);
-      newProps.height = Math.max(10, newProps.height);
-
+      // 객체 상태 업데이트 및 선택된 객체 정보 갱신
       const updatedObjects = objects.map(obj =>
-        obj.id === selectedObjectId
-          ? { ...obj, properties: newProps }
-          : obj
+        obj.id === selectedObjectId ? newProps : obj
       );
 
+      // 상태 업데이트 및 선택된 객체 정보 갱신
       onUpdateObjects(updatedObjects);
+      onObjectSelect(newProps);
       setResizeStartPos(mousePos);
+
+      console.log('Resized object:', newProps); // 디버깅용
     }
+
+    console.log('Mouse move:', { draggingMode, mousePos });  // 디버깅 로그 추가
+
+    if (draggingMode === 'object' && dragObject) {
+      const newPosX = mousePos.x - dragObject.startX;
+      const newPosY = mousePos.y - dragObject.startY;
+
+      const updatedObjects = objects.map(obj => {
+        if (obj.id === dragObject.id) {
+          const newObj = {
+            ...obj,
+            PosX: newPosX,
+            PosY: newPosY
+          };
+          // 객체가 이동할 때마다 선택된 객체 업데이트
+          if (obj.id === selectedObjectId) {
+            onObjectSelect(newObj);
+          }
+          return newObj;
+        }
+        return obj;
+      });
+
+      onUpdateObjects(updatedObjects);
+    }
+  };
+
+  // Canvas 렌더링 부분 수정
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    if (!width || !height) {
+      console.error('Invalid canvas dimensions:', { width, height });
+      return;
+    }
+
+    // 캔버스 크기 설정
+    canvas.width = width;
+    canvas.height = height;
+    
+    // 배경 초기화
+    ctx.fillStyle = '#2D3748';
+    ctx.fillRect(0, 0, width, height);
+
+    // 모든 객체 그리기
+    objects.forEach(obj => {
+      console.log('Drawing object:', obj);
+      drawObject(ctx, obj);
+    });
+
+    // 선택된 객체 표시
+    objects.forEach(obj => {
+      if (selectedObjectIds.includes(obj.id)) {
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(obj.PosX, obj.PosY, obj.Width, obj.Height);
+        
+        if (selectedObjectId === obj.id) {
+          drawResizeHandles(ctx, obj);
+        }
+      }
+    });
+
+  }, [width, height, objects, selectedObjectIds, selectedObjectId]);
+
+  // 객체 내부의 점인지 확인하는 헬퍼 함수 수정
+  const isPointInObject = (point: { x: number; y: number }, object: CanvasObjectProperties) => {
+    const { PosX, PosY, Width, Height } = object;
+    
+    // 디버깅용
+    console.log('Checking point:', point, 'against object:', {
+      PosX, PosY, Width, Height,
+      containsPoint: (
+        point.x >= PosX &&
+        point.x <= PosX + Width &&
+        point.y >= PosY &&
+        point.y <= PosY + Height
+      )
+    });
+    
+    return (
+      point.x >= PosX &&
+      point.x <= PosX + Width &&
+      point.y >= PosY &&
+      point.y <= PosY + Height
+    );
+  };
+
+  // 커서 스타일 결정 함수
+  const getCursor = () => {
+    if (draggingMode === 'object') return 'move';
+    if (draggingMode === 'canvas') return 'grabbing';
+    return 'grab';
   };
 
   const handleMouseUp = () => {
@@ -279,62 +315,60 @@ const Canvas: React.FC<CanvasProps> = ({
     setDragObject(null);
   };
 
-  // 마우스 위치 계산 함수
+  // 마우스 위치 계산 함수 수정
   const getCanvasMousePosition = (event: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    return {
-      x: (event.clientX - rect.left) / scale,
-      y: (event.clientY - rect.top) / scale
-    };
+
+    const x = (event.clientX - rect.left) / scale;
+    const y = (event.clientY - rect.top) / scale;
+
+    // 디버깅용
+    console.log('Mouse position:', { x, y, scale, clientX: event.clientX, clientY: event.clientY, rect });
+
+    return { x, y };
   };
 
-  // 객체 그리기 함수
-  const drawObject = (ctx: CanvasRenderingContext2D, object: CanvasObject) => {
+  // 객체 그리기 함수 수정
+  const drawObject = (ctx: CanvasRenderingContext2D, object: CanvasObjectProperties) => {
     ctx.save();
     
-    const { x, y, width, height, rotation = 0 } = object.properties;
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
+    const { id, PosX, PosY, Width, Height, Rotation = 0, FillColor, PenColor, PenWidth, Type, IsFilled } = object;
+    
+    // 디버깅용 로그 추가
+    console.log('Drawing object:', { id, Type, PosX, PosY, Width, Height });
 
-    // 회전 적용
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotation);
-    ctx.translate(-centerX, -centerY);
+    // 객체 중심을 기준으로 회전
+    ctx.translate(PosX + Width / 2, PosY + Height / 2);
+    ctx.rotate(Rotation);
+    ctx.translate(-(PosX + Width / 2), -(PosY + Height / 2));
 
-    // 선택된 객체 표시를 selectedObjectIds 기반으로 처리
-    if (selectedObjectIds.includes(object.id)) {
-      ctx.strokeStyle = '#00ff00';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
-      ctx.fillStyle = '#00ff00';
-      ctx.fillRect(x + width - 5, y + height - 5, 10, 10);
-    }
-
-    // 객체 스타일 설정
-    ctx.fillStyle = object.properties.fillColor || '#FFFFFF';
-    ctx.strokeStyle = object.properties.strokeColor || '#000000';
-    ctx.lineWidth = object.properties.strokeWidth || 1;
+    // 스타일 설정
+    ctx.fillStyle = FillColor || '#FFFFFF';
+    ctx.strokeStyle = PenColor || '#000000';
+    ctx.lineWidth = PenWidth || 1;
 
     // 객체 타입별 그리기
-    switch(object.type) {
+    switch (Type.toLowerCase()) {
       case 'rect':
-        ctx.fillRect(x, y, width, height);
-        ctx.strokeRect(x, y, width, height);
+        if (IsFilled) {
+          ctx.fillRect(PosX, PosY, Width, Height);
+        }
+        ctx.strokeRect(PosX, PosY, Width, Height);
         break;
 
       case 'circle':
         ctx.beginPath();
-        ctx.arc(x + width/2, y + height/2, Math.min(width, height)/2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(PosX + Width/2, PosY + Height/2, Math.min(Width, Height)/2, 0, Math.PI * 2);
+        if (IsFilled) ctx.fill();
         ctx.stroke();
         break;
 
       case 'triangle':
         ctx.beginPath();
-        ctx.moveTo(x + width/2, y);
-        ctx.lineTo(x, y + height);
-        ctx.lineTo(x + width, y + height);
+        ctx.moveTo(PosX + Width/2, PosY);
+        ctx.lineTo(PosX, PosY + Height);
+        ctx.lineTo(PosX + Width, PosY + Height);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -342,49 +376,49 @@ const Canvas: React.FC<CanvasProps> = ({
 
       case 'ellipse':
         ctx.beginPath();
-        ctx.ellipse(x + width/2, y + height/2, width/2, height/2, 0, 0, Math.PI * 2);
+        ctx.ellipse(PosX + Width/2, PosY + Height/2, Width/2, Height/2, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         break;
 
       case 'line':
         ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + width, y + height);
+        ctx.moveTo(PosX, PosY);
+        ctx.lineTo(PosX + Width, PosY + Height);
         ctx.stroke();
         break;
 
       case 'text':
-        const { text, fontSize, fontFamily, fillColor } = object.properties;
+        const { Text, FontSize, FontFamily, FillColor } = object;
         // 편집 중인 텍스트는 그리지 않음
         if (editingText && object.id === editingText.id) {
           return;
         }
-        ctx.fillStyle = fillColor || '#FFFFFF';
-        ctx.font = `${fontSize}px ${fontFamily}`;
+        ctx.fillStyle = FillColor || '#FFFFFF';
+        ctx.font = `${FontSize}px ${FontFamily}`;
         ctx.textBaseline = 'top';
-        ctx.fillText(text || '', x, y);
+        ctx.fillText(Text || '', PosX, PosY);
         
         // 선택된 객체일 때만 경계 상자 표시
         if (selectedObjectIds.includes(object.id)) {
-          ctx.strokeStyle = object.properties.strokeColor;
-          ctx.lineWidth = object.properties.strokeWidth;
-          ctx.strokeRect(x, y, width, height);
+          ctx.strokeStyle = object.PenColor;
+          ctx.lineWidth = object.PenWidth;
+          ctx.strokeRect(PosX, PosY, Width, Height);
         }
         break;
 
       case 'polygon':
       case 'polyline':
-        if (object.properties.points) {
+        if (object.Points) {
           ctx.beginPath();
-          object.properties.points.forEach((point: any, index: number) => {
+          object.Points.forEach((point: any, index: number) => {
             if (index === 0) {
               ctx.moveTo(point.x, point.y);
             } else {
               ctx.lineTo(point.x, point.y);
             }
           });
-          if (object.type === 'polygon') {
+          if (object.Type === 'polygon') {
             ctx.closePath();
           }
           ctx.fill();
@@ -392,7 +426,7 @@ const Canvas: React.FC<CanvasProps> = ({
 
           // 점 편집 핸들 그리기
           if (object.id === selectedObjectId) {
-            object.properties.points.forEach((point: any) => {
+            object.Points.forEach((point: any) => {
               ctx.beginPath();
               ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
               ctx.fillStyle = '#00ff00';
@@ -405,70 +439,63 @@ const Canvas: React.FC<CanvasProps> = ({
         break;
     }
 
-    // 선택된 객체일 경우 추가 컨트롤 그리기
-    if (object.id === selectedObjectId) {
-      // 회전 핸들 그리기
-      const handlePos = getRotationHandlePosition(object);
-      ctx.beginPath();
-      ctx.arc(handlePos.x, handlePos.y, 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#00ff00';
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.stroke();
-
-      // 회전 핸들과 객체 중심을 연결하는 선
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(handlePos.x, handlePos.y);
+    // 선택된 객체 표시 강화
+    if (selectedObjectIds.includes(id)) {
+      ctx.setLineDash([5, 5]);
       ctx.strokeStyle = '#00ff00';
-      ctx.stroke();
-
+      ctx.lineWidth = 2;
+      ctx.strokeRect(PosX, PosY, Width, Height);
+      
       // 리사이즈 핸들 그리기
-      const handles = getResizeHandles(object);
-      Object.entries(handles).forEach(([direction, handle]) => {
-        ctx.beginPath();
-        ctx.rect(
-          handle.x - HANDLE_SIZE / 2,
-          handle.y - HANDLE_SIZE / 2,
-          HANDLE_SIZE,
-          HANDLE_SIZE
-        );
-        ctx.fillStyle = '#00ff00';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
+      if (selectedObjectId === id) {
+        drawResizeHandles(ctx, object);
+      }
     }
 
     ctx.restore();
   };
 
+  // 리사이즈 핸들 그리기 함수 추가
+  const drawResizeHandles = (ctx: CanvasRenderingContext2D, object: CanvasObjectProperties) => {
+    const handles = getResizeHandles(object);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 1;
+    
+    Object.values(handles).forEach(handle => {
+      ctx.beginPath();
+      ctx.arc(handle.x, handle.y, HANDLE_SIZE / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  };
+
   // 리사이즈 핸들 위치 계산
-  const getResizeHandles = (object: CanvasObject) => {
-    const { x, y, width, height } = object.properties;
+  const getResizeHandles = (object: CanvasObjectProperties) => {
+    const { PosX, PosY, Width, Height } = object;
     return {
-      n: { x: x + width / 2, y: y, cursor: 'n-resize' },
-      s: { x: x + width / 2, y: y + height, cursor: 's-resize' },
-      e: { x: x + width, y: y + height / 2, cursor: 'e-resize' },
-      w: { x: x, y: y + height / 2, cursor: 'w-resize' },
-      nw: { x: x, y: y, cursor: 'nw-resize' },
-      ne: { x: x + width, y: y, cursor: 'ne-resize' },
-      sw: { x: x, y: y + height, cursor: 'sw-resize' },
-      se: { x: x + width, y: y + height, cursor: 'se-resize' }
+      n: { x: PosX + Width / 2, y: PosY, cursor: 'n-resize' },
+      s: { x: PosX + Width / 2, y: PosY + Height, cursor: 's-resize' },
+      e: { x: PosX + Width, y: PosY + Height / 2, cursor: 'e-resize' },
+      w: { x: PosX, y: PosY + Height / 2, cursor: 'w-resize' },
+      nw: { x: PosX, y: PosY, cursor: 'nw-resize' },
+      ne: { x: PosX + Width, y: PosY, cursor: 'ne-resize' },
+      sw: { x: PosX, y: PosY + Height, cursor: 'sw-resize' },
+      se: { x: PosX + Width, y: PosY + Height, cursor: 'se-resize' }
     };
   };
 
   // 회전 핸들 위치 계산
-  const getRotationHandlePosition = (object: CanvasObject) => {
-    const { x, y, width, height, rotation = 0 } = object.properties;
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
+  const getRotationHandlePosition = (object: CanvasObjectProperties) => {
+    const { PosX, PosY, Width, Height, Rotation = 0 } = object;
+    const centerX = PosX + Width / 2;
+    const centerY = PosY + Height / 2;
     const handleDistance = 30; // 회전 핸들과 객체 중심 사이의 거리
 
     return {
-      x: centerX + handleDistance * Math.cos(rotation),
-      y: centerY + handleDistance * Math.sin(rotation)
+      x: centerX + handleDistance * Math.cos(Rotation),
+      y: centerY + handleDistance * Math.sin(Rotation)
     };
   };
 
@@ -477,21 +504,21 @@ const Canvas: React.FC<CanvasProps> = ({
     if (!mousePos) return;
 
     const clickedObject = objects.find(obj => {
-      if (obj.type !== 'text') return false;
-      const { x, y, width, height } = obj.properties;
+      if (obj.Type !== 'text') return false;
+      const { PosX, PosY, Width, Height } = obj;
       return isPointInObject(mousePos, obj);
     });
 
-    if (clickedObject && clickedObject.type === 'text') {
+    if (clickedObject && clickedObject.Type === 'text') {
       // 선택된 텍스트 객체의 정확한 위치 정보 저장
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
       setEditingText({
         id: clickedObject.id,
-        x: clickedObject.properties.x,
-        y: clickedObject.properties.y,
-        value: clickedObject.properties.text || ''
+        x: clickedObject.PosX,
+        y: clickedObject.PosY,
+        value: clickedObject.Text || ''
       });
     }
   };
@@ -503,8 +530,8 @@ const Canvas: React.FC<CanvasProps> = ({
       if (editedObject) {
         setEditingText(prev => ({
           ...prev!,
-          x: editedObject.properties.x,
-          y: editedObject.properties.y
+          x: editedObject.PosX,
+          y: editedObject.PosY
         }));
       }
     }
@@ -537,10 +564,7 @@ const Canvas: React.FC<CanvasProps> = ({
       if (obj.id === editingText.id) {
         return {
           ...obj,
-          properties: {
-            ...obj.properties,
-            text: e.target.value
-          }
+          Text: e.target.value
         };
       }
       return obj;
@@ -601,10 +625,10 @@ const Canvas: React.FC<CanvasProps> = ({
             ref={containerRef}
             className="canvas-container relative"
             style={{ 
-              width: '100%',  // 여기를 수정
-              height: '100%', // 여기도 수정
-              maxWidth: `${width}px`,  // maxWidth 추가
-              maxHeight: `${height}px` // maxHeight 추가
+              width: `${width}px`,  // 픽셀 단위로 수정
+              height: `${height}px`, // 픽셀 단위로 수정
+              maxWidth: '100%',
+              maxHeight: '100%'
             }}
           >
             <div 

@@ -7,8 +7,6 @@
 .csv-tools {
   padding: 1rem;
   border-bottom: 1px solid #374151;
-  display: flex;
-  gap: 0.5rem;
 }
 
 .tool-button {
@@ -24,8 +22,162 @@
   background-color: #2563EB;
 }
 
-.csv-list {
+.hidden {
+  display: none;
+}
+
+.csv-main-content {
+  display: flex;
   flex: 1;
-  overflow-y: auto;
   padding: 1rem;
+  gap: 1rem;
+}
+
+.csv-grid {
+  flex: 2;
+  overflow: auto;
+  border: 1px solid #374151;
+  border-radius: 0.25rem;
+}
+
+.csv-grid table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.csv-grid th, 
+.csv-grid td {
+  border: 1px solid #374151;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.csv-grid th {
+  background-color: #1F2937;
+  color: white;
+}
+
+.csv-settings {
+  flex: 1;
+  padding: 1rem;
+  background-color: #1F2937;
+  border-radius: 0.25rem;
+}
+
+.settings-group {
+  border: 1px solid #374151;
+  padding: 1rem;
+  border-radius: 0.25rem;
+}
+
+.settings-group h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.header-mapping {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.header-checkbox {
+  width: 1rem;
+  height: 1rem;
+}
+
+.header-select {
+  flex: 1;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  background-color: #374151;
+  color: white;
+  border: 1px solid #4B5563;
+}
+
+.csv-table {
+  margin-top: 1rem;
+  overflow: auto;
+}
+
+.csv-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.csv-table th,
+.csv-table td {
+  border: 1px solid #374151;
+  padding: 0.5rem;
+}
+
+.csv-table th {
+  background-color: #1F2937;
+  color: white;
+  font-weight: 500;
+}
+
+.csv-table td.text-center {
+  text-align: center;
+}
+
+.csv-table input[type="text"] {
+  width: 100%;
+  padding: 0.25rem;
+  border: 1px solid #4B5563;
+  background-color: #374151;
+  color: white;
+  border-radius: 0.25rem;
+}
+
+.csv-table select {
+  width: 100%;
+  padding: 0.25rem;
+  border: 1px solid #4B5563;
+  background-color: #374151;
+  color: white;
+  border-radius: 0.25rem;
+}
+
+.csv-table input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.checkbox-center {
+  margin: 0;
+  display: block;
+  margin: 0 auto;
+}
+
+.special-column-settings {
+  flex: 1;
+  padding: 1rem;
+  background-color: #1F2937;
+  border-radius: 0.25rem;
+  margin-left: 1rem;
+}
+
+.special-column-settings h3 {
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.special-column-settings select {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #374151;
+  color: white;
+  border: 1px solid #4B5563;
+  border-radius: 0.25rem;
+}
+
+.read-only {
+  background-color: #374151;
+  color: #9CA3AF;
+  padding: 0.5rem;
+  cursor: not-allowed;
 }

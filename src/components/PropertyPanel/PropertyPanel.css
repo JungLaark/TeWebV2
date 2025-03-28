@@ -45,3 +45,44 @@
   height: 2rem;
   padding: 0;
 }
+
+.color-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+}
+
+.color-preview {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #4A5568;
+  border-radius: 2px;
+}
+
+/* 색상별 미리보기 스타일 */
+.color-black { background-color: #000000; }
+.color-white { background-color: #FFFFFF; }
+.color-red { background-color: #FF0000; }
+.color-yellow { background-color: #FFFF00; }
+
+/* 입력 필드 공통 스타일 */
+input[type="number"],
+select {
+  background-color: #2D3748;
+  border: 1px solid #4A5568;
+  border-radius: 0.25rem;
+  color: #E2E8F0;
+  padding: 0.25rem 0.5rem;
+}
+
+input[type="number"]:focus,
+select:focus {
+  outline: none;
+  border-color: #4299E1;
+}
+
+/* 체크박스 스타일 */
+input[type="checkbox"] {
+  accent-color: #4299E1;
+}

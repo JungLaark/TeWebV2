@@ -6,33 +6,21 @@ interface TagObjectsState {
 }
 
 const initialState: TagObjectsState = {
-  tagObjects: {},
+  tagObjects: {}
 };
-// tagObjectsSlice는 Redux 스토어의 일부로서 tagObjects 상태를 관리하는 슬라이스입니다
+
+// 태그 별 객체 상태를 관리하는 전용 슬라이스 
 const tagObjectsSlice = createSlice({
   name: 'tagObjects',
   initialState,
   reducers: {
-    setTagObjects(state, action: PayloadAction<{ tagName: string; objects: CanvasObjectProperties[] }>) {
-      state.tagObjects[action.payload.tagName] = action.payload.objects;
-    },
-    addObjectToTag(state, action: PayloadAction<{ tagName: string; object: CanvasObjectProperties }>) {
-      if (!state.tagObjects[action.payload.tagName]) {
-        state.tagObjects[action.payload.tagName] = [];
-      }
-      state.tagObjects[action.payload.tagName].push(action.payload.object);
-    },
-    updateObjectInTag(state, action: PayloadAction<{ tagName: string; object: CanvasObjectProperties }>) {
-      const objects = state.tagObjects[action.payload.tagName];
-      if (objects) {
-        const index = objects.findIndex(obj => obj.id === action.payload.object.id);
-        if (index !== -1) {
-          objects[index] = action.payload.object;
-        }
-      }
-    },
-  },
+    //태그별 객체 목록을 업데이트 하는 액션
+    updateTagObjects(state, action: PayloadAction<{ tagName: string; objects: CanvasObjectProperties[] }>) {
+      const { tagName, objects } = action.payload;
+      state.tagObjects[tagName] = objects;
+    }
+  }
 });
 
-export const { setTagObjects, addObjectToTag, updateObjectInTag } = tagObjectsSlice.actions;
+export const { updateTagObjects } = tagObjectsSlice.actions;
 export default tagObjectsSlice.reducer;

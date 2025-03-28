@@ -1,28 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../store';
-import { setTagObjects, addObjectToTag } from '../../store/tagObjectsSlice';
 import { LogOut, Tag } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { exportTemplate } from '../../utils/templateExport';
+import { RootState } from '../../store';
+import { addTemplateObjects } from '../../store/templateSlice';
+import { updateTagObjects } from '../../store/tagObjectsSlice';  // 추가
 import TagList from '../../Objects/TagList';
 import Canvas from '../../components/Canvas';
 import { PropertyPanel } from '../../components/PropertyPanel';
 import { Toolbar } from '../../components/Toolbar';
-import DrawingTools from '../../components/DrawingTools';
+import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
 import { TagItem, CanvasObjectProperties } from '../../types';
 import ManageCSVPopup from '../../components/Popup/ManageCSVPopup';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
-
   const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
   const [selectedObject, setSelectedObject] = useState<CanvasObjectProperties | null>(null);
-  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
   const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
 
+  const csvMatches = useSelector((state: RootState) => state.template.Matches);
+  const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
+  const templateState = useSelector((state: RootState) => state.template);
+
   const handleTagSelect = (tag: TagItem) => {
+    console.log('Selected tag:', tag); // 디버깅용
     setSelectedTag(tag);
     setSelectedObject(null);
   };
@@ -31,49 +36,70 @@ const Dashboard: React.FC = () => {
     setSelectedObject(object);
   };
 
-  const handleUpdateObjects = (newObjects: CanvasObjectProperties[]) => {
-    if (!selectedTag) return;
-    dispatch(setTagObjects({ tagName: selectedTag.name, objects: newObjects }));
-
-    if (selectedObject) {
-      const updatedSelectedObject = newObjects.find(obj => obj.id === selectedObject.id);
-      if (updatedSelectedObject) {
-        setSelectedObject(updatedSelectedObject);
-      }
-    }
-  };
-
   const handleAddShape = (type: string) => {
     if (!selectedTag) return;
 
-    const centerX = selectedTag.width / 2 - 50;
-    const centerY = selectedTag.height / 2 - 50;
+    console.log('Selected tag:', selectedTag);
+    const currentObjects = tagObjects[selectedTag.Name] || [];
+    console.log('Current tag objects:', currentObjects);
 
-    const newShape = {
-      id: `shape_${Date.now()}`,
-      type,
-      properties: {
-        x: centerX,
-        y: centerY,
-        width: 100,
-        height: 100,
-        fillColor: '#FFFFFF',
-        strokeColor: '#000000',
-        strokeWidth: 2,
-        rotation: 0,
-        ...(type === 'polygon' || type === 'polyline' ? {
-          points: [
-            { x: centerX, y: centerY },
-            { x: centerX + 100, y: centerY },
-            { x: centerX + 50, y: centerY + 100 }
-          ]
-        } : {})
-      }
+    const newObject: CanvasObjectProperties = {
+      id: `${type}_${Date.now()}`,
+      Type: type,
+      ZOrder: 0,
+      PenWidth: 1,
+      PenColor: "Black",
+      FillColor: "White",
+      IsFilled: false,
+      PosX: selectedTag.Width / 2 - 50,  // 중앙 위치
+      PosY: selectedTag.Height / 2 - 50,  // 중앙 위치
+      PosX1: 0,
+      PosY1: 0,
+      Height: 100,
+      Width: 100,
+      Rotation: 0,
+      Font: "Arial, 12pt",
+      Text: null,
+      Align: 0,
+      VAlign: 1,
+      DataName: null,
+      ShowBarcodeLabel: false,
+      ShowBoarder: false,
+      ArcsWidth: 20,
+      Margin: 0,
+      Arrow: 0,
+      ArrowSize: 5,
+      BorderShape: 0,
+      Newline: "",
+      Subject: "",
+      CodeType: 0,
+      Reference: 0,
+      SizeMode: 2,
+      ProductID: 0,
+      MultiFacingMode: false,
+      SingleLine: true,
+      LineHeight: 16,
+      ImageBase64: null
     };
 
-    dispatch(addObjectToTag({ tagName: selectedTag.name, object: newShape }));
-    setSelectedObject(newShape);
-    setSelectedObjectIds([newShape.id]);
+    const updatedObjects = [...currentObjects, newObject];
+    console.log('Updated objects:', updatedObjects);
+    
+    // 두 액션을 디스패치
+    //태그별 객체 상태 업데이트
+    dispatch(updateTagObjects({ 
+      tagName: selectedTag.Name, 
+      objects: updatedObjects 
+    }));
+    
+    //템플릿 객체 상태 업데이트
+    dispatch(addTemplateObjects({ 
+      tagName: selectedTag.Name, 
+      objects: updatedObjects 
+    }));
+    
+    setSelectedObject(newObject);
+    setSelectedObjectIds([newObject.id]);
   };
 
   const handleAddText = () => {
@@ -85,30 +111,51 @@ const Dashboard: React.FC = () => {
       properties: {
         x: 0,
         y: 0,
-        text: 'Double click to edit',
+        text: 'Double click to edit',  // 변경된 기본 텍스트
         fontSize: 20,
         fontFamily: 'Arial',
         fillColor: '#FFFFFF',
         strokeColor: '#000000',
         strokeWidth: 1,
         rotation: 0,
-        width: 200,
-        height: 30,
-      },
+        width: 200,  // 텍스트 박스 기본 크기 증가
+        height: 30
+      }
     };
 
-    dispatch(addObjectToTag({ tagName: selectedTag.name, object: newText }));
+    const currentObjects = tagObjects[selectedTag.name] || [];
+    const updatedObjects = [...currentObjects, newText];
+    dispatch(addTemplateObjects({ tagName: selectedTag.name, objects: updatedObjects }));
     setSelectedObject(newText);
     setSelectedObjectIds([newText.id]);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
-    window.location.href = '/login';
+    window.location.href = '/login';  // navigate 대신 location.href 사용
   };
 
   const handleManageCSV = () => {
     setIsCSVPopupOpen(true);
+  };
+
+  const handleSaveTemplate = () => {
+    // tagObjects를 Templates.Objects 형식으로 변환하여 저장
+    Object.entries(tagObjects).forEach(([tagName, objects]) => {
+      dispatch(addTemplateObjects({ tagName, objects }));
+    });
+
+    const exportData = {
+      ...templateState,
+      Templates: {
+        Objects: Object.entries(tagObjects).map(([tagName, objects]) => ({
+          tagName,
+          objects
+        }))
+      }
+    };
+
+    exportTemplate(exportData);
   };
 
   return (
@@ -122,7 +169,7 @@ const Dashboard: React.FC = () => {
           onManageReservations={() => console.log('Reservations')}
           onLoadTemplate={() => console.log('Load')}
           onMergeTemplates={() => console.log('Merge')}
-          onSaveTemplate={() => console.log('Save')}
+          onSaveTemplate={handleSaveTemplate}
           onExportBitmap={() => console.log('Export')}
           onSendToCoreESN={() => console.log('Send')}
           onLoadFromCoreESN={() => console.log('Load')}
@@ -153,12 +200,22 @@ const Dashboard: React.FC = () => {
           <div className="flex-1 flex items-center justify-center">
             {selectedTag ? (
               <Canvas
-                width={selectedTag.width}
-                height={selectedTag.height}
-                tagName={selectedTag.name}
+                width={selectedTag.Width}
+                height={selectedTag.Height}
+                tagName={selectedTag.Name}
+                objects={tagObjects[selectedTag.Name] || []}
+                onUpdateObjects={(updatedObjects) => {
+                  // 두 액션 모두 디스패치
+                  dispatch(updateTagObjects({ 
+                    tagName: selectedTag.Name, 
+                    objects: updatedObjects 
+                  }));
+                  dispatch(addTemplateObjects({ 
+                    tagName: selectedTag.Name, 
+                    objects: updatedObjects 
+                  }));
+                }}
                 onObjectSelect={handleObjectSelect}
-                objects={tagObjects[selectedTag.name] || []}
-                onUpdateObjects={handleUpdateObjects}
                 selectedObjectIds={selectedObjectIds}
                 setSelectedObjectIds={setSelectedObjectIds}
                 onAddShape={handleAddShape}
@@ -176,14 +233,24 @@ const Dashboard: React.FC = () => {
         <div className="w-[250px] border-l border-gray-700">
           <PropertyPanel
             selectedObject={selectedObject}
-            selectedTagName={selectedTag?.name}
+            selectedTagName={selectedTag?.Name}  // Name으로 수정
             onUpdateObject={(updatedObject) => {
               if (!selectedTag) return;
-              const currentObjects = tagObjects[selectedTag.name] || [];
+              const currentObjects = tagObjects[selectedTag.Name] || [];  // Name으로 수정
               const updatedObjects = currentObjects.map(obj => 
                 obj.id === updatedObject.id ? updatedObject : obj
               );
-              handleUpdateObjects(updatedObjects);
+
+              // 두 액션 모두 디스패치
+              dispatch(updateTagObjects({ 
+                tagName: selectedTag.Name, 
+                objects: updatedObjects 
+              }));
+              dispatch(addTemplateObjects({ 
+                tagName: selectedTag.Name, 
+                objects: updatedObjects 
+              }));
+
               setSelectedObject(updatedObject);
             }}
           />

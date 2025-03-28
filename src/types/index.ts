@@ -18,12 +18,12 @@ export interface TagItem {
   Default: boolean;
   TType: string;
   TValue: string;
-  popTValue: string;
   PValue: string;
 }
 
 export interface CanvasObjectProperties {
-  Type: 'Rect' | 'Circle' | 'Text' | 'Image';
+  id: string;  // 선택적(?)에서 필수로 변경
+  Type: string;
   ZOrder: number;
   PenWidth: number;
   PenColor: string;
@@ -58,4 +58,27 @@ export interface CanvasObjectProperties {
   SingleLine: boolean;
   LineHeight: number;
   ImageBase64: string | null;
+}
+
+export interface CSVColumnMatch {
+  Desc: string;
+  Type: number;
+  ViewLevel: string;
+  Index: number;
+  Key: boolean;
+  Name: string;
+}
+
+export interface TemplateObject {
+  tagName: string;
+  objects: CanvasObjectProperties[];
+}
+
+export interface TemplateState {
+  Matches: {
+    Basic: CSVColumnMatch[];
+  };
+  Templates: {
+    Objects: TemplateObject[];
+  };
 }

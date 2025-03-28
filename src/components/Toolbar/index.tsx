@@ -45,7 +45,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     <div className="bg-gray-800 p-2 border-b border-gray-700 flex justify-between items-center">
       {/* 왼쪽 여백 */}
       <div className="w-[250px] flex items-center">
-        <span className="text-xl font-bold">LOGO</span>
+        <span className="text-xl font-bold">Template Editor WEB</span>
       </div>
 
       {/* 중앙 관리 메뉴 */}

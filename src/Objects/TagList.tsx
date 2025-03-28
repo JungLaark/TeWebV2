@@ -107,11 +107,32 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, onStateChan
   };
 
   const handleTagClick = (tag: TagItem) => {
-    onSelectTag(tag);
-    // 태그 변경 시 상태 저장
-    if (onStateChange) {
-      onStateChange(tag.name, null);
-    }
+    // TagItem 객체 생성
+    const tagItem: TagItem = {
+      Guid: `tag_${Date.now()}`,
+      Name: tag.name,
+      Model: 0,
+      DisplayName: tag.name,
+      Bookmark: false,
+      ModelName: tag.name,
+      Width: tag.width,
+      Height: tag.height,
+      Orientation: 0,
+      Direction: 0,
+      Upsidedown: false,
+      Column: 1,
+      Row: 1,
+      BGColor: "White",
+      TWidth: tag.width,
+      THeight: tag.height,
+      Default: false,
+      TType: "Normal",
+      TValue: "",
+      PValue: ""
+    };
+
+    console.log('TagList - Created TagItem:', tagItem);
+    onSelectTag(tagItem);
   };
 
   const handleWheel = (e: React.WheelEvent) => {

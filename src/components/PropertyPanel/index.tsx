@@ -1,295 +1,211 @@
 import React from 'react';
-import { Settings2 } from 'lucide-react';
 import { CanvasObjectProperties } from '../../types';
-import './PropertyPanel.css';
 
 interface PropertyPanelProps {
   selectedObject: CanvasObjectProperties | null;
-  onUpdateObject: (object: CanvasObjectProperties) => void;
-  selectedTagName?: string; // 새로운 prop 추가
+  selectedTagName: string | undefined;
+  onUpdateObject: (updatedObject: CanvasObjectProperties) => void;
 }
 
 export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   selectedObject,
-  onUpdateObject,
-  selectedTagName // 새로운 prop
+  selectedTagName,
+  onUpdateObject
 }) => {
   // 색상 옵션 결정 함수 수정
   const getColorOptions = () => {
-    if (!selectedTagName) {
-      return [
-        { value: '#000000', label: 'Black' },
-        { value: '#FFFFFF', label: 'White' },
-      ];
-    }
-
-    // 선택된 태그 이름으로 색상 옵션 결정
-    const hasRY = selectedTagName.includes('RY');
-    const hasR = selectedTagName.includes('R');
-
-    const baseColors = [
+    const baseOptions = [
       { value: '#000000', label: 'Black' },
-      { value: '#FFFFFF', label: 'White' },
+      { value: '#FFFFFF', label: 'White' }
     ];
+    
+    if (!selectedTagName) return baseOptions;
 
-    if (hasRY) {
+    if (selectedTagName.includes('R') && selectedTagName.includes('Y')) {
+      // 4Color: 검정, 흰색, 빨강, 노랑
       return [
-        ...baseColors,
+        baseOptions[0], // Black
+        baseOptions[1], // White
         { value: '#FF0000', label: 'Red' },
-        { value: '#FFFF00', label: 'Yellow' },
+        { value: '#FFFF00', label: 'Yellow' }
       ];
-    } else if (hasR) {
+    } else if (selectedTagName.includes('R')) {
+      // 3Color: 검정, 흰색, 빨강
       return [
-        ...baseColors,
-        { value: '#FF0000', label: 'Red' },
+        baseOptions[0], // Black
+        baseOptions[1], // White
+        { value: '#FF0000', label: 'Red' }
       ];
     }
-
-    return baseColors;
+    
+    return baseOptions; // 2Color: 검정, 흰색
   };
 
-  const handlePropertyChange = (property: string, value: any) => {
+  const handleCoordinateChange = (property: 'PosX' | 'PosY', value: number) => {
     if (!selectedObject) return;
 
-    const updatedObject = {
+    // 상태 업데이트 즉시 반영
+    onUpdateObject({
       ...selectedObject,
-      properties: {
-        ...selectedObject.properties,
-        [property]: value
-      }
-    };
-    onUpdateObject(updatedObject);
+      [property]: value
+    });
   };
-
-  const handlePointChange = (index: number, coord: 'x' | 'y', value: number) => {
-    if (!selectedObject?.properties.points) return;
-
-    const newPoints = [...selectedObject.properties.points];
-    newPoints[index][coord] = value;
-
-    handlePropertyChange('points', newPoints);
-  };
-
-  const renderShapeSpecificProperties = () => {
-    if (!selectedObject) return null;
-
-    switch (selectedObject.type) {
-      case 'circle':
-        return (
-          <div>
-            <label className="block text-sm font-medium text-white">Radius</label>
-            <input
-              type="number"
-              value={selectedObject.properties.radius}
-              onChange={(e) => handlePropertyChange('radius', Number(e.target.value))}
-              className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-            />
-          </div>
-        );
-
-      case 'ellipse':
-        return (
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-gray-400">Radius X</label>
-              <input
-                type="number"
-                value={selectedObject.properties.rx}
-                onChange={(e) => handlePropertyChange('rx', Number(e.target.value))}
-                className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400">Radius Y</label>
-              <input
-                type="number"
-                value={selectedObject.properties.ry}
-                onChange={(e) => handlePropertyChange('ry', Number(e.target.value))}
-                className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-              />
-            </div>
-          </div>
-        );
-
-      case 'polygon':
-      case 'polyline':
-        return (
-          <div>
-            <label className="block text-sm font-medium text-white">Points</label>
-            <div className="max-h-40 overflow-y-auto">
-              {selectedObject.properties.points.map((point: any, index: number) => (
-                <div key={index} className="grid grid-cols-2 gap-2 mt-1">
-                  <input
-                    type="number"
-                    value={point.x}
-                    onChange={(e) => handlePointChange(index, 'x', Number(e.target.value))}
-                    className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-                  />
-                  <input
-                    type="number"
-                    value={point.y}
-                    onChange={(e) => handlePointChange(index, 'y', Number(e.target.value))}
-                    className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-    }
-  };
-
-  // 색상 선택 UI 렌더링 함수
-  const renderColorSelect = (property: string, label: string) => {
-    const colorOptions = getColorOptions();
-    return (
-      <div>
-        <label className="text-xs text-gray-400">{label}</label>
-        <select
-          value={selectedObject?.properties[property] || '#000000'}
-          onChange={(e) => handlePropertyChange(property, e.target.value)}
-          className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
-        >
-          {colorOptions.map(color => (
-            <option key={color.value} value={color.value}>
-              {color.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  };
-
-  // Colors 섹션 수정
-  const renderColorsSection = () => (
-    <div>
-      <label className="block text-sm font-medium text-white">Colors</label>
-      <div className="grid grid-cols-2 gap-2 mt-1">
-        {renderColorSelect('penColor', 'Pen Color')}
-        {renderColorSelect('fillColor', 'Fill Color')}
-      </div>
-    </div>
-  );
 
   if (!selectedObject) {
     return (
-      <div className="w-64 bg-gray-50 p-4 border-l border-gray-200">
-        <div className="text-gray-500 text-center">
-          Select an object to edit its properties
-        </div>
+      <div className="p-4 text-gray-300">
+        <h2 className="text-lg font-semibold mb-4">Properties</h2>
+        <p>No object selected</p>
       </div>
     );
   }
 
-  return (
-    <div className="w-64 bg-gray-800 p-4 border-l border-gray-700">
-      <div className="flex items-center gap-2 mb-4">
-        <Settings2 className="w-5 h-5 text-white" />
-        <h2 className="text-lg font-semibold text-white">Properties</h2>
-      </div>
-      
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-white">Position</label>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <div>
-              <label className="text-xs text-gray-400">X</label>
-              <input
-                type="number"
-                value={selectedObject.properties.x}
-                onChange={(e) => handlePropertyChange('x', Number(e.target.value))}
-                className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400">Y</label>
-              <input
-                type="number"
-                value={selectedObject.properties.y}
-                onChange={(e) => handlePropertyChange('y', Number(e.target.value))}
-                className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-              />
-            </div>
-          </div>
-        </div>
+  // color 선택 UI 수정
+  const renderColorSelect = (label: string, value: string | undefined, onChange: (color: string) => void) => {
+    const options = getColorOptions();
+    const currentValue = value || options[0].value;
 
-        <div>
-          <label className="block text-sm font-medium text-white">Size</label>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <div>
-              <label className="text-xs text-gray-400">Width</label>
-              <input
-                type="number"
-                value={selectedObject.properties.width}
-                onChange={(e) => handlePropertyChange('width', Number(e.target.value))}
-                className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400">Height</label>
-              <input
-                type="number"
-                value={selectedObject.properties.height}
-                onChange={(e) => handlePropertyChange('height', Number(e.target.value))}
-                className="w-full bg-gray-700 text-white px-2 py-1 rounded"
-              />
-            </div>
-          </div>
-        </div>
-
-        {renderColorsSection()}
-
-        <div>
-          <label className="block text-sm font-medium text-white">Rotation</label>
-          <input
-            type="number"
-            value={selectedObject.properties.rotation}
-            onChange={(e) =>
-              handlePropertyChange('rotation', Number(e.target.value))
-            }
-            className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
+    return (
+      <div>
+        <label className="text-xs block mb-1">{label}:</label>
+        <div className="flex items-center gap-2">
+          <select
+            value={currentValue}
+            onChange={(e) => onChange(e.target.value)}
+            className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1"
+          >
+            {options.map((color) => (
+              <option key={color.value} value={color.value}>
+                {color.label}
+              </option>
+            ))}
+          </select>
+          <div 
+            className="w-6 h-6 border border-gray-600 rounded"
+            style={{ backgroundColor: currentValue }}
           />
         </div>
+      </div>
+    );
+  };
 
-        {selectedObject.type === 'text' && (
-          <>
+  return (
+    <div className="p-4 text-gray-300">
+      <h2 className="text-lg font-semibold mb-4">Properties</h2>
+      
+      <div className="space-y-4">
+        {/* 위치 속성 */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Position</label>
+          <div className="grid grid-cols-2 gap-2">
+            {/* X, Y 좌표 입력 필드 */}
             <div>
-              <label className="block text-sm font-medium text-white">Text Content</label>
-              <input
-                type="text"
-                value={selectedObject.properties.text || ''}
-                onChange={(e) => handlePropertyChange('text', e.target.value)}
-                className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white">Font Size</label>
+              <label className="text-xs">X:</label>
               <input
                 type="number"
-                value={selectedObject.properties.fontSize || 20}
-                onChange={(e) => handlePropertyChange('fontSize', Number(e.target.value))}
-                className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
-                min="1"
+                value={Math.round(selectedObject.PosX)}
+                onChange={(e) => handleCoordinateChange('PosX', parseFloat(e.target.value) || 0)}
+                onBlur={(e) => handleCoordinateChange('PosX', parseFloat(e.target.value) || 0)}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-white">Font Family</label>
-              <select
-                value={selectedObject.properties.fontFamily || 'Arial'}
-                onChange={(e) => handlePropertyChange('fontFamily', e.target.value)}
-                className="block w-full bg-gray-700 text-white px-2 py-1 rounded mt-1"
-              >
-                <option value="Arial">Arial</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Courier New">Courier New</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Verdana">Verdana</option>
-              </select>
+              <label className="text-xs">Y:</label>
+              <input
+                type="number"
+                value={Math.round(selectedObject.PosY)}
+                onChange={(e) => handleCoordinateChange('PosY', parseFloat(e.target.value) || 0)}
+                onBlur={(e) => handleCoordinateChange('PosY', parseFloat(e.target.value) || 0)}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
+              />
             </div>
-          </>
-        )}
-        {renderShapeSpecificProperties()}
+          </div>
+        </div>
+
+        {/* 크기 속성 */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Size</label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs">Width:</label>
+              <input
+                type="number"
+                value={Math.round(selectedObject.Width)}
+                onChange={(e) => onUpdateObject({
+                  ...selectedObject,
+                  Width: Math.max(1, parseFloat(e.target.value) || 0)
+                })}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
+              />
+            </div>
+            <div>
+              <label className="text-xs">Height:</label>
+              <input
+                type="number"
+                value={Math.round(selectedObject.Height)}
+                onChange={(e) => onUpdateObject({
+                  ...selectedObject,
+                  Height: Math.max(1, parseFloat(e.target.value) || 0)
+                })}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 채우기 여부 */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Fill</label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={selectedObject.IsFilled}
+              onChange={(e) => onUpdateObject({
+                ...selectedObject,
+                IsFilled: e.target.checked
+              })}
+              className="form-checkbox bg-gray-700 border-gray-600"
+            />
+            <span className="text-sm">Fill Shape</span>
+          </label>
+        </div>
+
+        {/* 색상 속성 */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Colors</label>
+          <div className="space-y-2">
+            {selectedObject.IsFilled && (
+              renderColorSelect('Fill Color', selectedObject.FillColor, (color) => 
+                onUpdateObject({
+                  ...selectedObject,
+                  FillColor: color
+                })
+              )
+            )}
+            {renderColorSelect('Pen Color', selectedObject.PenColor, (color) => 
+              onUpdateObject({
+                ...selectedObject,
+                PenColor: color
+              })
+            )}
+          </div>
+        </div>
+
+        {/* 선 두께 */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Pen Width:</label>
+          <input
+            type="number"
+            value={selectedObject.PenWidth}
+            onChange={(e) => onUpdateObject({
+              ...selectedObject,
+              PenWidth: parseFloat(e.target.value) || 1
+            })}
+            min="1"
+            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
+          />
+        </div>
       </div>
     </div>
   );
-}
+};
