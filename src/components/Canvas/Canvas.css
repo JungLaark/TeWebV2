@@ -2,6 +2,8 @@
   background-color: #2D3748;
   border: 1px solid #4A5568;
   border-radius: 0.5rem;
+  overflow: hidden;
+  user-select: none;
 }
 
 .canvas-wrapper {
@@ -9,13 +11,13 @@
   height: 100%;
   overflow: hidden;
   position: relative;
+  transition: cursor 0.2s;
 }
 
 .canvas {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform-origin: center;
   background-color: #2D3748;
   border: 1px solid #4A5568;
 }
@@ -27,13 +29,8 @@
   pointer-events: none;
 }
 
-.scale-indicator {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  background-color: #4A5568;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  color: #FFFFFF;
-  font-size: 0.875rem;
+/* 확대/축소 컨테이너 스타일 */
+.flex-1.flex.items-center.justify-center {
+  overflow: hidden;
+  position: relative;
 }

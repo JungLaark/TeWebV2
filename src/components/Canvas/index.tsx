@@ -477,7 +477,7 @@ const Canvas: React.FC<CanvasProps> = ({
     return {
       n: { x: PosX + Width / 2, y: PosY, cursor: 'n-resize' },
       s: { x: PosX + Width / 2, y: PosY + Height, cursor: 's-resize' },
-      e: { x: PosX + Width, y: PosY + Height / 2, cursor: 'e-resize' },
+      e: { x: PosX, y: PosY + Height / 2, cursor: 'e-resize' },
       w: { x: PosX, y: PosY + Height / 2, cursor: 'w-resize' },
       nw: { x: PosX, y: PosY, cursor: 'nw-resize' },
       ne: { x: PosX + Width, y: PosY, cursor: 'ne-resize' },
@@ -581,25 +581,50 @@ const Canvas: React.FC<CanvasProps> = ({
     setEditingText(null);
   };
 
-  // 휠 이벤트 리스너 추가
+  // 휠 이벤트 리스너를 상위 컨테이너에 추가
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const mainContainer = document.querySelector('.flex-1.flex.items-center.justify-center');
+    if (!mainContainer) return;
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
+
       const delta = event.deltaY;
       const scaleChange = delta > 0 ? 0.9 : 1.1;
       const newScale = Math.min(Math.max(scale * scaleChange, 0.1), 5);
+
       setScale(newScale);
     };
 
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-    
+    mainContainer.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
-      canvas.removeEventListener('wheel', handleWheel);
+      mainContainer.removeEventListener('wheel', handleWheel);
     };
   }, [scale]);
+
+  // 드래그로 이동 가능하도록 추가
+  const handleCanvasMouseDown = (event: React.MouseEvent) => {
+    if (event.button === 1 || event.button === 2) { // 중간 버튼 또는 오른쪽 버튼
+      setIsDragging(true);
+      setStartPos({
+        x: event.clientX - position.x,
+        y: event.clientY - position.y
+      });
+    }
+  };
+
+  const handleCanvasMouseMove = (event: React.MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: event.clientX - startPos.x,
+        y: event.clientY - startPos.y
+      });
+    }
+  };
+
+  const handleCanvasMouseUp = () => {
+    setIsDragging(false);
+  };
 
   const calculateFitScale = () => {
     if (!containerRef.current) return 1;
@@ -620,16 +645,28 @@ const Canvas: React.FC<CanvasProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full">
       <div className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div 
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ 
+            cursor: isDragging ? 'grabbing' : 'grab',
+            transform: `scale(${scale})`,
+            transformOrigin: 'center',
+            transition: 'transform 0.1s ease-out'
+          }}
+        >
           <div 
             ref={containerRef}
             className="canvas-container relative"
             style={{ 
-              width: `${width}px`,  // 픽셀 단위로 수정
-              height: `${height}px`, // 픽셀 단위로 수정
+              width: `${width}px`,
+              height: `${height}px`,
               maxWidth: '100%',
               maxHeight: '100%'
             }}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onMouseLeave={handleCanvasMouseUp}
           >
             <div 
               className="canvas-wrapper"
@@ -645,7 +682,7 @@ const Canvas: React.FC<CanvasProps> = ({
                 height={height}
                 className="canvas"
                 style={{
-                  transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${scale})`
+                  transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`
                 }}
               />
               {editingText && (
@@ -679,19 +716,23 @@ const Canvas: React.FC<CanvasProps> = ({
                 </div>
               )}
               {selectionBox.start && selectionBox.end && (
-                <div className="selection-box" style={{
-                  left: Math.min(selectionBox.start.x, selectionBox.end.x),
-                  top: Math.min(selectionBox.start.y, selectionBox.end.y),
-                  width: Math.abs(selectionBox.end.x - selectionBox.start.x),
-                  height: Math.abs(selectionBox.end.y - selectionBox.start.y)
-                }} />
+                <div 
+                  className="selection-box" 
+                  style={{
+                    left: Math.min(selectionBox.start.x, selectionBox.end.x),
+                    top: Math.min(selectionBox.start.y, selectionBox.end.y),
+                    width: Math.abs(selectionBox.end.x - selectionBox.start.x),
+                    height: Math.abs(selectionBox.end.y - selectionBox.start.y)
+                  }} 
+                />
               )}
-              <div className="scale-indicator"></div>
-                {Math.round(scale * 100)}%
-              </div>
             </div>
           </div>
         </div>
+      </div>
+      <div className="absolute bottom-4 right-4 bg-gray-800 px-2 py-1 rounded text-sm text-white">
+        {Math.round(scale * 100)}%
+      </div>
     </div>
   );
 };
