@@ -10,7 +10,7 @@ build:
   tags:
     - windows
   script:
-    - "C:/Program Files/Git/bin/bash.exe -c 'cd $(cygpath -u \"$CI_PROJECT_DIR\") && npm run build'"
+    - "C:/Program Files/Git/bin/bash.exe -c 'cd $CI_PROJECT_DIR && npm run build'"
   artifacts:
     paths:
       - dist/
