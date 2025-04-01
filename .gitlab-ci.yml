@@ -10,7 +10,12 @@ build:
   tags:
     - windows
   script:
-    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR && npm install && npm run build'" #이스케이프 처리
+    - "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash"
+    - ". ~/.nvm/nvm.sh && nvm install 18 && nvm use 18"
+    - "export PATH=$CI_PROJECT_DIR/node_modules/.bin:$PATH"
+    - "node -v"
+    - "npm install"
+    - "npm run build"
   artifacts:
     paths:
       - dist/
@@ -20,5 +25,5 @@ deploy:
   tags:
     - windows
   script:
-    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR && scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb'"
-    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR && ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\"'"
+    - "scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb"
+    - "ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\""
