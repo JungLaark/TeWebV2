@@ -1,10 +1,10 @@
 import React from 'react';
-import { CanvasObjectProperties } from '../../types';
+import { TObject } from '../../types';  // CanvasObjectProperties를 TObject로 변경
 
 interface PropertyPanelProps {
-  selectedObject: CanvasObjectProperties | null;
+  selectedObject: TObject | null;  // 타입 변경
   selectedTagName: string | undefined;
-  onUpdateObject: (updatedObject: CanvasObjectProperties) => void;
+  onUpdateObject: (updatedObject: TObject) => void;
 }
 
 export const PropertyPanel: React.FC<PropertyPanelProps> = ({
@@ -63,7 +63,8 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   // color 선택 UI 수정
   const renderColorSelect = (label: string, value: string | undefined, onChange: (color: string) => void) => {
     const options = getColorOptions();
-    const currentValue = value || options[0].value;
+    // 기본값을 value가 없을 때 black으로 설정
+    const currentValue = value || '#000000';
 
     return (
       <div>

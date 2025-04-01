@@ -1,31 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import DrawingTools from '../DrawingTools'; // 추가
 import './Canvas.css';
-
-interface CanvasObjectProperties {
-  PosX: number;
-  PosY: number;
-  Width: number;
-  Height: number;
-  Rotation?: number;
-  FillColor?: string;
-  PenColor?: string;
-  PenWidth?: number;
-  Type: string;
-  Text?: string;
-  FontSize?: number;
-  FontFamily?: string;
-  Points?: { x: number; y: number }[];
-  IsFilled?: boolean; // 추가
-}
+import { TObject } from '../../types';  // CanvasObjectProperties를 TObject로 변경
 
 interface CanvasProps {
   width: number;
   height: number;
   tagName: string;
-  objects: CanvasObjectProperties[]; // 타입 수정
-  onUpdateObjects: (objects: CanvasObjectProperties[]) => void;
-  onObjectSelect: (object: CanvasObjectProperties | null) => void;
+  objects: TObject[];  // 타입 변경
+  onUpdateObjects: (objects: TObject[]) => void;  // 타입 변경
+  onObjectSelect: (object: TObject | null) => void;  // 타입 변경
   selectedObjectIds: string[];
   setSelectedObjectIds: (ids: string[]) => void;
   onAddShape: (type: string) => void;
@@ -272,7 +256,7 @@ const Canvas: React.FC<CanvasProps> = ({
   }, [width, height, objects, selectedObjectIds, selectedObjectId]);
 
   // 객체 내부의 점인지 확인하는 헬퍼 함수 수정
-  const isPointInObject = (point: { x: number; y: number }, object: CanvasObjectProperties) => {
+  const isPointInObject = (point: { x: number; y: number }, object: TObject) => {
     const { PosX, PosY, Width, Height } = object;
     
     // 디버깅용
@@ -330,22 +314,19 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   // 객체 그리기 함수 수정
-  const drawObject = (ctx: CanvasRenderingContext2D, object: CanvasObjectProperties) => {
+  const drawObject = (ctx: CanvasRenderingContext2D, object: TObject) => {
     ctx.save();
     
     const { id, PosX, PosY, Width, Height, Rotation = 0, FillColor, PenColor, PenWidth, Type, IsFilled } = object;
     
-    // 디버깅용 로그 추가
-    console.log('Drawing object:', { id, Type, PosX, PosY, Width, Height });
-
     // 객체 중심을 기준으로 회전
     ctx.translate(PosX + Width / 2, PosY + Height / 2);
     ctx.rotate(Rotation);
     ctx.translate(-(PosX + Width / 2), -(PosY + Height / 2));
 
-    // 스타일 설정
-    ctx.fillStyle = FillColor || '#FFFFFF';
-    ctx.strokeStyle = PenColor || '#000000';
+    // 스타일 설정 (색상 적용 부분 수정)
+    ctx.fillStyle = FillColor || 'white';
+    ctx.strokeStyle = PenColor || 'black';
     ctx.lineWidth = PenWidth || 1;
 
     // 객체 타입별 그리기
@@ -360,7 +341,9 @@ const Canvas: React.FC<CanvasProps> = ({
       case 'circle':
         ctx.beginPath();
         ctx.arc(PosX + Width/2, PosY + Height/2, Math.min(Width, Height)/2, 0, Math.PI * 2);
-        if (IsFilled) ctx.fill();
+        if (IsFilled) {
+          ctx.fill();
+        }
         ctx.stroke();
         break;
 
@@ -456,7 +439,7 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   // 리사이즈 핸들 그리기 함수 추가
-  const drawResizeHandles = (ctx: CanvasRenderingContext2D, object: CanvasObjectProperties) => {
+  const drawResizeHandles = (ctx: CanvasRenderingContext2D, object: TObject) => {
     const handles = getResizeHandles(object);
     
     ctx.fillStyle = '#ffffff';
@@ -472,7 +455,7 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   // 리사이즈 핸들 위치 계산
-  const getResizeHandles = (object: CanvasObjectProperties) => {
+  const getResizeHandles = (object: TObject) => {
     const { PosX, PosY, Width, Height } = object;
     return {
       n: { x: PosX + Width / 2, y: PosY, cursor: 'n-resize' },
@@ -487,7 +470,7 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   // 회전 핸들 위치 계산
-  const getRotationHandlePosition = (object: CanvasObjectProperties) => {
+  const getRotationHandlePosition = (object: TObject) => {
     const { PosX, PosY, Width, Height, Rotation = 0 } = object;
     const centerX = PosX + Width / 2;
     const centerY = PosY + Height / 2;

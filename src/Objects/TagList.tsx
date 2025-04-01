@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { TagItem } from '../types';
+import { TLayout, ModelType, OrientationType, DirectionType } from '../types';  // TagItem을 TLayout으로 변경
 
 interface TagListProps {
-  onSelectTag: (tag: TagItem) => void;
+  onSelectTag: (tag: TLayout) => void;  // TagItem을 TLayout으로 변경
   selectedTag?: string;
   onStateChange?: (tagName: string, state: any) => void; // 상태 변경 콜백 추가
 }
@@ -106,19 +106,18 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, onStateChan
     }));
   };
 
-  const handleTagClick = (tag: TagItem) => {
-    // TagItem 객체 생성
-    const tagItem: TagItem = {
+  const handleTagClick = (tag: { name: string, width: number, height: number }) => {
+    // TLayout 객체 생성 - TagItem 대신 새로운 형식으로 변경
+    const tagItem: TLayout = {
       Guid: `tag_${Date.now()}`,
       Name: tag.name,
-      Model: 0,
+      Model: ModelType.M21, // 기본값 설정
       DisplayName: tag.name,
       Bookmark: false,
-      ModelName: tag.name,
       Width: tag.width,
       Height: tag.height,
-      Orientation: 0,
-      Direction: 0,
+      Orientation: OrientationType.Landscape,
+      Direction: DirectionType.Default,
       Upsidedown: false,
       Column: 1,
       Row: 1,
@@ -128,10 +127,10 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, onStateChan
       Default: false,
       TType: "Normal",
       TValue: "",
-      PValue: ""
+      Objects: []
     };
 
-    console.log('TagList - Created TagItem:', tagItem);
+    console.log('TagList - Created TLayout:', tagItem);
     onSelectTag(tagItem);
   };
 

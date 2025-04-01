@@ -1,8 +1,8 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { CanvasObjectProperties } from '../types';
+import { TObject } from '../types';  // CanvasObjectProperties를 TObject로 변경
 
 interface TagObjectsState {
-  tagObjects: Record<string, CanvasObjectProperties[]>;
+  tagObjects: Record<string, TObject[]>;  // 타입 변경
 }
 
 const initialState: TagObjectsState = {
@@ -15,7 +15,7 @@ const tagObjectsSlice = createSlice({
   initialState,
   reducers: {
     //태그별 객체 목록을 업데이트 하는 액션
-    updateTagObjects(state, action: PayloadAction<{ tagName: string; objects: CanvasObjectProperties[] }>) {
+    updateTagObjects(state, action: PayloadAction<{ tagName: string; objects: TObject[] }>) {
       const { tagName, objects } = action.payload;
       state.tagObjects[tagName] = objects;
     }

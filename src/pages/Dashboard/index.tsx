@@ -11,14 +11,14 @@ import Canvas from '../../components/Canvas';
 import { PropertyPanel } from '../../components/PropertyPanel';
 import { Toolbar } from '../../components/Toolbar';
 import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
-import { TagItem, CanvasObjectProperties } from '../../types';
+import { TLayout, TObject } from '../../types';  // CanvasObjectProperties를 TObject로 변경
 import ManageCSVPopup from '../../components/Popup/ManageCSVPopup';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
-  const [selectedObject, setSelectedObject] = useState<CanvasObjectProperties | null>(null);
+  const [selectedTag, setSelectedTag] = useState<TLayout | null>(null);  // TagItem을 TLayout으로 변경
+  const [selectedObject, setSelectedObject] = useState<TObject | null>(null); // CanvasObjectProperties를 TObject로 변경
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
   const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
 
@@ -26,13 +26,13 @@ const Dashboard: React.FC = () => {
   const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
   const templateState = useSelector((state: RootState) => state.template);
 
-  const handleTagSelect = (tag: TagItem) => {
+  const handleTagSelect = (tag: TLayout) => {  // TagItem을 TLayout으로 변경
     console.log('Selected tag:', tag); // 디버깅용
     setSelectedTag(tag);
     setSelectedObject(null);
   };
 
-  const handleObjectSelect = (object: CanvasObjectProperties | null) => {
+  const handleObjectSelect = (object: TObject | null) => { // CanvasObjectProperties를 TObject로 변경
     setSelectedObject(object);
   };
 
@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
     const currentObjects = tagObjects[selectedTag.Name] || [];
     console.log('Current tag objects:', currentObjects);
 
-    const newObject: CanvasObjectProperties = {
+    const newObject: TObject = { // CanvasObjectProperties를 TObject로 변경
       id: `${type}_${Date.now()}`,
       Type: type,
       ZOrder: 0,

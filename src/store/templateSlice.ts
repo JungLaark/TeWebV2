@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { TemplateState, CSVColumnMatch, CanvasObjectProperties } from '../types';
+import { TemplateState, CSVColumnMatch, TObject } from '../types';
 
 const initialState: TemplateState = {
   Matches: {
@@ -25,7 +25,7 @@ const templateSlice = createSlice({
         };
       }
     },
-    addTemplateObjects(state, action: PayloadAction<{ tagName: string; objects: CanvasObjectProperties[] }>) {
+    addTemplateObjects(state, action: PayloadAction<{ tagName: string; objects: TObject[] }>) {
       // 디버깅용 로그 추가
       console.log('Adding objects to template:', action.payload);
       
