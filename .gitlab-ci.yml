@@ -5,6 +5,12 @@ stages:
 variables:
   NODE_ENV: production
 
+test-bash:
+  stage: test
+  script:
+    - echo "Running on Bash"
+    - bash --version
+
 build:
   stage: build
   tags: 
@@ -26,6 +32,6 @@ deploy:
     - windows
   script:
     # 빌드 파일 및 server.js를 임베디드 리눅스로 전송
-    - scp -O -P 58176 -r dist/ server.js root@192.168.0.101:/esl/TeWeb
+    - scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb
     # 서버 실행
     - ssh -p 58176 root@192.168.0.101 "cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &"
