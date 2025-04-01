@@ -12,6 +12,7 @@ test-bash:
     - windows
   script:
     - echo "Running on Bash"
+    # Modify powershell to bash
     - bash -c "bash --version"
 
 build:
