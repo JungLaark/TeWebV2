@@ -10,7 +10,7 @@ build:
   tags:
     - windows
   script:
-    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR && npm run build'" #이스케이프 처리
+    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR npm install && npm run build'" #이스케이프 처리
   artifacts:
     paths:
       - dist/
