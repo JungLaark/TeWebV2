@@ -19,12 +19,6 @@ build:
   tags: 
     - windows
   script:
-    # Node.js 설치 경로 설정 (Windows 환경일 경우)
-    #- export PATH="/c/Program Files/nodejs:$PATH"
-    #- $env:PATH = "C:\Program Files\nodejs;$env:PATH"
-    # 의존성 설치
-    #- npm install
-    # 프로젝트 빌드
     - npm run build
   artifacts:
     paths:
