@@ -12,7 +12,7 @@ test-bash:
     - windows
   script:
     - echo "Running on Bash"
-    - "C:/Program Files/Git/bin/bash.exe --version"
+    - bash --version
 
 build:
   stage: build
