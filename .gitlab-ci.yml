@@ -1,0 +1,31 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  NODE_ENV: production
+
+build:
+  stage: build
+  tags: 
+    - windows
+  script:
+    # Node.js 설치 경로 설정 (Windows 환경일 경우)
+    - export PATH="/c/Program Files/nodejs:$PATH"
+    # 의존성 설치
+    - npm install
+    # 프로젝트 빌드
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+
+deploy:
+  stage: deploy
+  tags: 
+    - windows
+  script:
+    # 빌드 파일 및 server.js를 임베디드 리눅스로 전송
+    - scp -O -P 58176 -r dist/ server.js root@192.168.0.101:/esl/TeWeb
+    # 서버 실행
+    - ssh -p 58176 root@192.168.0.101 "cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &"
