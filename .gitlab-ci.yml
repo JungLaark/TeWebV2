@@ -10,7 +10,7 @@ build:
   tags:
     - windows
   script:
-    - "C:/Program Files/Git/bin/bash.exe -c 'cd $CI_PROJECT_DIR && npm run build'"
+    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR && npm run build'" #이스케이프 처리
   artifacts:
     paths:
       - dist/
@@ -20,5 +20,5 @@ deploy:
   tags:
     - windows
   script:
-    - "C:/Program Files/Git/bin/bash.exe -c 'cd $CI_PROJECT_DIR && scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb'"
-    - "C:/Program Files/Git/bin/bash.exe -c 'cd $CI_PROJECT_DIR && ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\"'"
+    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR && scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb'"
+    - "\"C:/Program Files/Git/bin/bash.exe\" -c 'cd $CI_PROJECT_DIR && ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\"'"
