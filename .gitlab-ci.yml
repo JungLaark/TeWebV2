@@ -8,6 +8,8 @@ variables:
 
 test-bash:
   stage: test
+  tags: 
+    - windows
   script:
     - echo "Running on Bash"
     - bash --version
