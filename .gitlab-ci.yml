@@ -38,6 +38,8 @@ deploy:
     - "scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb"
     # 2. setup_server.sh 실행 권한 추가
     - "ssh -p 58176 root@192.168.0.101 \"chmod +x /esl/TeWeb/dist/setup_server.sh\""
+        # 3. 서버에서 줄바꿈 형식 변환
+    - "ssh -p 58176 root@192.168.0.101 \"sed -i 's/\r$//' /esl/TeWeb/dist/setup_server.sh\""
     # 3. 서버에서 setup_server.sh 실행
     - "ssh -p 58176 root@192.168.0.101 \"bash /esl/TeWeb/dist/setup_server.sh\""
     # 4. 서버 실행
