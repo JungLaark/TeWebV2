@@ -25,6 +25,11 @@ deploy:
   stage: deploy
   tags:
     - windows
+  before_script:
+    - "mkdir -p ~/.ssh"
+    - "echo \"$SSH_PRIVATE_KEY\" > ~/.ssh/id_rsa" # SSH키 설정 
+    - "chmod 600 ~/.ssh/id_rsa"
+    - "ssh-keyscan -p 58176 192.168.0.101 >> ~/.ssh/known_hosts" # 서버의 호스트 키 추가
   script:
     - "scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb"
     - "ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\""
