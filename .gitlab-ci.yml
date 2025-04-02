@@ -28,6 +28,8 @@ deploy:
     - "echo \"$SSH_PRIVATE_KEY\" > ~/.ssh/id_rsa" # SSH 비공개 키 설정
     - "chmod 600 ~/.ssh/id_rsa"
     - "ssh-keyscan -p 58176 192.168.0.101 >> ~/.ssh/known_hosts" # 서버의 호스트 키 추가
+        # GitLab Runner에서 CRLF 문제 방지
+    - "find . -type f -exec sed -i 's/\r$//' {} +"
   script:
     # 1. /dist 폴더의 모든 파일을 서버로 복사
     - "scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb"
