@@ -1,8 +1,6 @@
 stages:
   - build
   - deploy
-variables:
-  # NODE_ENV: production  # 필요 시 활성화
 build:
   stage: build
   tags:
