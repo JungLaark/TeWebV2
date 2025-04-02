@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 줄바꿈 형식 변환 (CRLF -> LF)
+sed -i 's/\r$//' /esl/TeWeb/dist/setup_server.sh
+
 echo "Setting up Node.js environment variables..."
 echo 'export PATH=/esl/TeWeb/node-v18.20.8/bin/:$PATH' >> ~/.bashrc
 source ~/.bashrc

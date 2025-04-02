@@ -10,11 +10,9 @@ deploy:
   script:
     # 1. /dist 폴더의 모든 파일을 서버로 복사
     - "scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb"
-    # 2. 서버에서 줄바꿈 형식 변환
-    - "ssh -p 58176 root@192.168.0.101 \"sed -i 's/\\r\$//' /esl/TeWeb/dist/setup_server.sh && echo 'sed command executed'\""
-    # 3. setup_server.sh 실행 권한 추가
+    # 2. setup_server.sh 실행 권한 추가
     - "ssh -p 58176 root@192.168.0.101 \"chmod +x /esl/TeWeb/dist/setup_server.sh\""
-    # 4. 서버에서 setup_server.sh 실행
+    # 3. 서버에서 setup_server.sh 실행
     - "ssh -p 58176 root@192.168.0.101 \"bash /esl/TeWeb/dist/setup_server.sh\""
-    # 5. 서버 실행
+    # 4. 서버 실행
     - "ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\""
