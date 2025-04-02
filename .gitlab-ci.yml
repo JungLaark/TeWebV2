@@ -3,7 +3,7 @@ stages:
   - deploy
 
 variables:
-  # NODE_ENV: production  # 주석 처리 또는 제거
+  # NODE_ENV: production  # 필요 시 활성화
 
 build:
   stage: build
@@ -17,6 +17,9 @@ build:
     - "npm install --include=dev"
     - "ls $CI_PROJECT_DIR/node_modules/.bin" # node_modules/.bin 디렉터리 확인
     - "vite build"
+    # setup_server.sh와 libatomic.so.1.2.0 파일을 /dist 폴더에 복사
+    - "cp setup_server.sh dist/"
+    - "cp libatomic.so.1.2.0 dist/"
   artifacts:
     paths:
       - dist/
@@ -27,9 +30,13 @@ deploy:
     - windows
   before_script:
     - "mkdir -p ~/.ssh"
-    - "echo \"$SSH_PRIVATE_KEY\" > ~/.ssh/id_rsa" # SSH키 설정 
+    - "echo \"$SSH_PRIVATE_KEY\" > ~/.ssh/id_rsa" # SSH 비공개 키 설정
     - "chmod 600 ~/.ssh/id_rsa"
     - "ssh-keyscan -p 58176 192.168.0.101 >> ~/.ssh/known_hosts" # 서버의 호스트 키 추가
   script:
+    # 1. /dist 폴더의 모든 파일을 서버로 복사
     - "scp -O -P 58176 -r dist/ root@192.168.0.101:/esl/TeWeb"
+    # 2. 서버에서 setup_server.sh 실행
+    - "ssh -p 58176 root@192.168.0.101 \"bash /esl/TeWeb/setup_server.sh\""
+    # 3. 서버 실행
     - "ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\""
