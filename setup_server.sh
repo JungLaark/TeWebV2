@@ -1,4 +1,5 @@
 #!/bin/bash
+
 echo "Setting up Node.js environment variables..."
 echo 'export PATH=/esl/TeWeb/node-v18.20.8/bin/:$PATH' >> ~/.bashrc
 source ~/.bashrc
