@@ -39,5 +39,3 @@ deploy:
     - "ssh -p 58176 root@192.168.0.101 \"chmod +x /esl/TeWeb/dist/setup_server.sh\""
     # 4. 서버에서 setup_server.sh 실행
     - "ssh -p 58176 root@192.168.0.101 \"bash /esl/TeWeb/dist/setup_server.sh\""
-    # 5. 서버 실행
-    - "ssh -p 58176 root@192.168.0.101 \"cd /esl/TeWeb && nohup node server.js > server.log 2>&1 &\""
