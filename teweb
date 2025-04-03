@@ -1,0 +1,110 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          teweb
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start and stop the TeWeb Node.js server
+# Description:       Controls the TeWeb Node.js server process
+### END INIT INFO
+
+# 설정
+APP_DIR="/esl/TeWeb"
+NODE_BIN="$APP_DIR/node-v18.20.8/bin/node"
+SERVER_SCRIPT="$APP_DIR/server.js"
+LOG_FILE="$APP_DIR/server.log"
+PID_FILE="$APP_DIR/server.pid"
+LIB_FILE="/usr/lib/libatomic.so.1"
+LIB_SOURCE="$APP_DIR/libatomic.so.1.2.0"
+
+# Node.js 환경변수 설정 확인
+setup_environment() {
+    if ! grep -q "$APP_DIR/node-v18.20.8/bin/" ~/.bashrc; then
+        echo "Setting up Node.js environment variables..."
+        echo "export PATH=$APP_DIR/node-v18.20.8/bin/:$PATH" >> ~/.bashrc
+        source ~/.bashrc
+        echo "Node.js environment variables set."
+    else
+        echo "Node.js environment variables already set."
+    fi
+}
+
+# 라이브러리 파일 복사 및 링크 확인
+setup_library() {
+    if [ ! -L "$LIB_FILE" ]; then
+        echo "Copying libatomic.so.1.2.0 to /usr/lib/..."
+        cp "$LIB_SOURCE" "$LIB_FILE"
+        echo "Creating symbolic link for libatomic.so.1..."
+        ln -sf "$LIB_SOURCE" "$LIB_FILE"
+        echo "Refreshing library cache..."
+        ldconfig
+        echo "Library setup complete."
+    else
+        echo "Library file and symbolic link already exist."
+    fi
+}
+
+# Node.js 서버 시작
+start() {
+    echo "Starting TeWeb Node.js server..."
+    setup_environment
+    setup_library
+
+    if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
+        echo "TeWeb server is already running."
+        return 0
+    fi
+    cd "$APP_DIR"
+    nohup "$NODE_BIN" "$SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"
+    echo "TeWeb server started with PID $(cat "$PID_FILE")."
+}
+
+# Node.js 서버 중지
+stop() {
+    echo "Stopping TeWeb Node.js server..."
+    if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
+        kill -9 $(cat "$PID_FILE") && rm -f "$PID_FILE"
+        echo "TeWeb server stopped."
+    else
+        echo "TeWeb server is not running."
+    fi
+}
+
+# Node.js 서버 재시작
+restart() {
+    echo "Restarting TeWeb Node.js server..."
+    stop
+    start
+}
+
+# Node.js 서버 상태 확인
+status() {
+    if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
+        echo "TeWeb server is running with PID $(cat "$PID_FILE")."
+    else
+        echo "TeWeb server is not running."
+    fi
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
