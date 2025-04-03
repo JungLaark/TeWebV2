@@ -1,10 +1,10 @@
 .navbar {
-  width: 200px;  /* 210px에서 200px로 변경 */
+  width: 200px;
   background-color: #2D3748;
   color: #FFFFFF;
   height: 100vh;
-  overflow-y: auto;
-  @apply p-4 h-full flex flex-col;
+  @apply p-4 flex flex-col;
+  overflow: hidden; /* 전체 스크롤 제거 */
 }
 
 .navbar-header {
@@ -109,15 +109,49 @@
 
 /* 스크롤바 스타일 */
 .scrollbar-thin::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #6b7280; /* gray-500 */
-  border-radius: 4px;
+  width: 6px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
+  background-color: #1F2937; /* gray-800 */
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: #374151; /* gray-700 */
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #4B5563; /* gray-600 */
+}
+
+.category-section {
+  height: 220px; /* 각 섹션 동일 높이 */
+  min-height: 220px; /* 최소 높이 보장 */
+  overflow-y: auto;
+  padding: 0.5rem;
+  border-bottom: 1px solid #374151;
+  scrollbar-width: thin;
+  scrollbar-color: #374151 #1F2937; /* thumb track */
+}
+
+.category-section:last-child {
+  border-bottom: none;
+}
+
+.category-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.category-section::-webkit-scrollbar-track {
+  background: #1F2937; /* gray-800 */
+}
+
+.category-section::-webkit-scrollbar-thumb {
+  background-color: #374151; /* gray-700 */
+  border-radius: 3px;
+}
+
+.category-section::-webkit-scrollbar-thumb:hover {
+  background-color: #4B5563; /* gray-600 */
 }
