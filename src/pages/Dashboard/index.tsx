@@ -6,7 +6,7 @@ import { exportTemplate } from '../../utils/templateExport';
 import { RootState } from '../../store';
 import { addTemplateObjects } from '../../store/templateSlice';
 import { updateTagObjects } from '../../store/tagObjectsSlice';  // 추가
-import TagList from '../../Objects/TagList';
+import TagList from '../../components/Navbar/TagList'; // 경로 수정
 import Canvas from '../../components/Canvas';
 import { PropertyPanel } from '../../components/PropertyPanel';
 import { Toolbar } from '../../components/Toolbar';
