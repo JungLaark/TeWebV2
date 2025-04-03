@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tag } from 'lucide-react';
-import TagList from '../../Objects/TagList';
+import TagList from './TagList';
 import './Navbar.css';
 
 interface NavbarProps {
