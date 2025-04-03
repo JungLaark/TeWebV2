@@ -106,3 +106,18 @@
 .tag-size {
   @apply text-xs text-gray-300 ml-2;
 }
+
+/* 스크롤바 스타일 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #6b7280; /* gray-500 */
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background-color: #374151; /* gray-700 */
+}
