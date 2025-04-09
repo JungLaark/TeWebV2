@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import CommonPopup from '../CommonPopup';
 import { selectBasicMatches } from '../../../store/selectors';
-import { setBasicMatches, updateColumnMatch } from '../../../store/templateSlice'; // csvMatchSlice -> templateSlice로 변경
+import { setBasicMatches, updateColumnMatch } from '../../../store/features/templateSlice';  // 경로 수정
 import './ManageCSVPopup.css';
 
 interface ManageCSVPopupProps {

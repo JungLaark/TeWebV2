@@ -4,8 +4,8 @@ import { LogOut, Tag } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { exportTemplate } from '../../utils/templateExport';
 import { RootState } from '../../store';
-import { addTemplateObjects } from '../../store/templateSlice';
-import { updateTagObjects } from '../../store/tagObjectsSlice';  // 추가
+import { addTemplateObjects } from '../../store/features/templateSlice';  // 경로 수정
+import { updateTagObjects } from '../../store/features/tagObjectsSlice';  // 경로 수정
 import TagList from '../../components/Navbar/TagList'; // 경로 수정
 import Canvas from '../../components/Canvas';
 import { PropertyPanel } from '../../components/PropertyPanel';
@@ -13,6 +13,7 @@ import { Toolbar } from '../../components/Toolbar';
 import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
 import { TLayout, TObject } from '../../types';  // CanvasObjectProperties를 TObject로 변경
 import ManageCSVPopup from '../../components/Popup/ManageCSVPopup';
+import { ContextMenuProvider } from '../../components/ContextMenu/ContextMenuProvider';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -159,118 +160,120 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Header - 관리 메뉴만 포함 */}
-      <header>
-        <Toolbar
-          onManageCSV={handleManageCSV}
-          onManageFonts={() => console.log('Fonts')}
-          onManageImageCodes={() => console.log('Images')}
-          onManageReservations={() => console.log('Reservations')}
-          onLoadTemplate={() => console.log('Load')}
-          onMergeTemplates={() => console.log('Merge')}
-          onSaveTemplate={handleSaveTemplate}
-          onExportBitmap={() => console.log('Export')}
-          onSendToCoreESN={() => console.log('Send')}
-          onLoadFromCoreESN={() => console.log('Load')}
-          onLogout={handleLogout}
-        />
-      </header>
+    <ContextMenuProvider>
+      <div className="flex flex-col h-screen bg-gray-900 text-white">
+        {/* Header - 관리 메뉴만 포함 */}
+        <header>
+          <Toolbar
+            onManageCSV={handleManageCSV}
+            onManageFonts={() => console.log('Fonts')}
+            onManageImageCodes={() => console.log('Images')}
+            onManageReservations={() => console.log('Reservations')}
+            onLoadTemplate={() => console.log('Load')}
+            onMergeTemplates={() => console.log('Merge')}
+            onSaveTemplate={handleSaveTemplate}
+            onExportBitmap={() => console.log('Export')}
+            onSendToCoreESN={() => console.log('Send')}
+            onLoadFromCoreESN={() => console.log('Load')}
+            onLogout={handleLogout}
+          />
+        </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - TagList */}
-        <div className="w-[250px] flex flex-col border-r border-gray-700">
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Tag size={20} />
-              Tag List
-            </h2>
+        {/* Main Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Sidebar - TagList */}
+          <div className="w-[250px] flex flex-col border-r border-gray-700">
+            <div className="p-1.5 border-b border-gray-700">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Tag size={20} />
+                Tag List
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <TagList 
+                onSelectTag={handleTagSelect} 
+                selectedTag={selectedTag?.name}
+              />
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            <TagList 
-              onSelectTag={handleTagSelect} 
-              selectedTag={selectedTag?.name}
+
+          {/* Center - Canvas */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex items-center justify-center">
+              {selectedTag ? (
+                <Canvas
+                  width={selectedTag.Width}
+                  height={selectedTag.Height}
+                  tagName={selectedTag.Name}
+                  objects={tagObjects[selectedTag.Name] || []}
+                  onUpdateObjects={(updatedObjects) => {
+                    // 두 액션 모두 디스패치
+                    dispatch(updateTagObjects({ 
+                      tagName: selectedTag.Name, 
+                      objects: updatedObjects 
+                    }));
+                    dispatch(addTemplateObjects({ 
+                      tagName: selectedTag.Name, 
+                      objects: updatedObjects 
+                    }));
+                  }}
+                  onObjectSelect={handleObjectSelect}
+                  selectedObjectIds={selectedObjectIds}
+                  setSelectedObjectIds={setSelectedObjectIds}
+                  onAddShape={handleAddShape}
+                  onAddText={handleAddText}
+                />
+              ) : (
+                <div className="text-gray-500">
+                  Select a tag to start editing
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Sidebar - PropertyPanel */}
+          <div className="w-[250px] border-l border-gray-700">
+            <PropertyPanel
+              selectedObject={selectedObject}
+              selectedTagName={selectedTag?.Name}  // Name으로 수정
+              onUpdateObject={(updatedObject) => {
+                if (!selectedTag) return;
+                const currentObjects = tagObjects[selectedTag.Name] || [];  // Name으로 수정
+                const updatedObjects = currentObjects.map(obj => 
+                  obj.id === updatedObject.id ? updatedObject : obj
+                );
+
+                // 두 액션 모두 디스패치
+                dispatch(updateTagObjects({ 
+                  tagName: selectedTag.Name, 
+                  objects: updatedObjects 
+                }));
+                dispatch(addTemplateObjects({ 
+                  tagName: selectedTag.Name, 
+                  objects: updatedObjects 
+                }));
+
+                setSelectedObject(updatedObject);
+              }}
             />
           </div>
         </div>
 
-        {/* Center - Canvas */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex items-center justify-center">
-            {selectedTag ? (
-              <Canvas
-                width={selectedTag.Width}
-                height={selectedTag.Height}
-                tagName={selectedTag.Name}
-                objects={tagObjects[selectedTag.Name] || []}
-                onUpdateObjects={(updatedObjects) => {
-                  // 두 액션 모두 디스패치
-                  dispatch(updateTagObjects({ 
-                    tagName: selectedTag.Name, 
-                    objects: updatedObjects 
-                  }));
-                  dispatch(addTemplateObjects({ 
-                    tagName: selectedTag.Name, 
-                    objects: updatedObjects 
-                  }));
-                }}
-                onObjectSelect={handleObjectSelect}
-                selectedObjectIds={selectedObjectIds}
-                setSelectedObjectIds={setSelectedObjectIds}
-                onAddShape={handleAddShape}
-                onAddText={handleAddText}
-              />
-            ) : (
-              <div className="text-gray-500">
-                Select a tag to start editing
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Sidebar - PropertyPanel */}
-        <div className="w-[250px] border-l border-gray-700">
-          <PropertyPanel
-            selectedObject={selectedObject}
-            selectedTagName={selectedTag?.Name}  // Name으로 수정
-            onUpdateObject={(updatedObject) => {
-              if (!selectedTag) return;
-              const currentObjects = tagObjects[selectedTag.Name] || [];  // Name으로 수정
-              const updatedObjects = currentObjects.map(obj => 
-                obj.id === updatedObject.id ? updatedObject : obj
-              );
-
-              // 두 액션 모두 디스패치
-              dispatch(updateTagObjects({ 
-                tagName: selectedTag.Name, 
-                objects: updatedObjects 
-              }));
-              dispatch(addTemplateObjects({ 
-                tagName: selectedTag.Name, 
-                objects: updatedObjects 
-              }));
-
-              setSelectedObject(updatedObject);
-            }}
+        {/* Footer */}
+        <footer className="border-t border-gray-700">
+          <DrawingTools 
+            onAddShape={handleAddShape}
+            onAddText={handleAddText}
           />
-        </div>
-      </div>
+        </footer>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-700">
-        <DrawingTools 
-          onAddShape={handleAddShape}
-          onAddText={handleAddText}
+        {/* Add CSV Popup */}
+        <ManageCSVPopup 
+          isOpen={isCSVPopupOpen}
+          onClose={() => setIsCSVPopupOpen(false)}
         />
-      </footer>
-
-      {/* Add CSV Popup */}
-      <ManageCSVPopup 
-        isOpen={isCSVPopupOpen}
-        onClose={() => setIsCSVPopupOpen(false)}
-      />
-    </div>
+      </div>
+    </ContextMenuProvider>
   );
 };
 

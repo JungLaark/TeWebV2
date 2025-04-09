@@ -13,6 +13,7 @@ import {
   LogOut 
 } from 'lucide-react';
 import './Toolbar.css';
+import { handleTemplateFileLoad } from '../../utils/fileHandlers';
 
 interface ToolbarProps {
   onLogout: () => void;
@@ -41,6 +42,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSendToCoreESN,
   onLoadFromCoreESN
 }) => {
+  const handleLoadTemplate = async () => {
+    const template = await handleTemplateFileLoad();
+    if (template) {
+      onLoadTemplate();  // 부모 컴포넌트에 알림
+    }
+  };
+
   return (
     <div className="bg-gray-800 p-2 border-b border-gray-700 flex justify-between items-center">
       {/* 왼쪽 여백 */}
@@ -63,7 +71,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <Calendar size={18} />
         </button>
         <div className="h-6 w-px bg-gray-600 mx-2" /> {/* 구분선 */}
-        <button onClick={onLoadTemplate} className="toolbar-button" title="Load Template">
+        <button onClick={handleLoadTemplate} className="toolbar-button" title="Load Template">
           <FolderOpen size={18} />
         </button>
         <button onClick={onMergeTemplates} className="toolbar-button" title="Merge Templates">

@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import templateReducer from './templateSlice';
-import tagObjectsReducer from './tagObjectsSlice';
+import templateReducer from './features/templateSlice';
+import tagObjectsReducer from './features/tagObjectsSlice';
 
 export const store = configureStore({
   reducer: {

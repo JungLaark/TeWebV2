@@ -1,0 +1,95 @@
+.context-menu {
+  position: fixed;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  min-width: 180px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+              0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 1000;
+  opacity: 0;
+  transform: scale(0.95);
+  animation: contextMenuFadeIn 0.15s ease-out forwards;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-header {
+  padding: 0.625rem 0.75rem; /* 헤더 패딩 조정 */
+  margin: -0.5rem -0.5rem 0.5rem -0.5rem;
+  border-bottom: 1px solid #374151;
+  font-size: 0.875rem;
+  color: #9CA3AF;
+  background-color: #161E2E;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.context-menu-header .tag-name {
+  font-weight: 600;
+  color: #E5E7EB;
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.context-menu-header .tag-info {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: #9CA3AF;
+  padding-top: 0.25rem;
+}
+
+.context-menu-header .tag-info span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem; /* 패딩 높이 조정 */
+  min-height: 36px; /* 최소 높이 설정 */
+  width: 100%;
+  border: none;
+  background: none;
+  color: #e5e7eb;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.context-menu-item:hover {
+  background-color: #374151;
+  transform: translateX(2px);
+}
+
+.context-menu-item-danger {
+  color: #ef4444;
+}
+
+.context-menu-item-danger:hover {
+  background-color: #991b1b;
+  color: #fecaca;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: #374151;
+  margin: 0.375rem 0.5rem; /* 구분선 여백 조정 */
+}

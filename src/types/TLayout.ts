@@ -56,7 +56,7 @@ export interface TLayout {
   Default: boolean;
   TType: string;
   TValue: string;
-  PValue?: string;  // 읽기 전용 속성 추가
+  PValue: string;      // PValue 추가
   popTValue?: string; // 읽기 전용 속성 추가
   Desc?: string;  // 읽기 전용 속성 추가
   TemplateType: TemplateEnum;  // enum 타입으로 변경
