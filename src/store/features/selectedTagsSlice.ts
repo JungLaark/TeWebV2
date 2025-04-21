@@ -6,9 +6,27 @@ interface SelectedTagsState {
   selectedTags: Tag[];
 }
 
+// localStorage에서 selectedTags 불러오기
+function loadSelectedTagsFromStorage(): Tag[] | null {
+  try {
+    const data = localStorage.getItem('selectedTags');
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+// localStorage에 selectedTags 저장
+function saveSelectedTagsToStorage(tags: Tag[]) {
+  try {
+    localStorage.setItem('selectedTags', JSON.stringify(tags));
+  } catch {}
+}
+
 const initialState: SelectedTagsState = {
   availableTags: tagList,
-  selectedTags: tagList, // 기본적으로 모든 태그가 선택됨
+  selectedTags: loadSelectedTagsFromStorage() || tagList, // localStorage 우선
 };
 
 const selectedTagsSlice = createSlice({
@@ -17,15 +35,18 @@ const selectedTagsSlice = createSlice({
   reducers: {
     setSelectedTags: (state, action: PayloadAction<Tag[]>) => {
       state.selectedTags = action.payload;
+      saveSelectedTagsToStorage(state.selectedTags);
     },
     addSelectedTag: (state, action: PayloadAction<Tag>) => {
       const exists = state.selectedTags.find(tag => tag.name === action.payload.name);
       if (!exists) {
         state.selectedTags.push(action.payload);
+        saveSelectedTagsToStorage(state.selectedTags);
       }
     },
     removeSelectedTag: (state, action: PayloadAction<string>) => {
       state.selectedTags = state.selectedTags.filter(tag => tag.name !== action.payload);
+      saveSelectedTagsToStorage(state.selectedTags);
     },
     toggleSelectedTag: (state, action: PayloadAction<string>) => {
       const tagIndex = state.selectedTags.findIndex(tag => tag.name === action.payload);
@@ -36,9 +57,11 @@ const selectedTagsSlice = createSlice({
       } else if (tagToToggle) {
         state.selectedTags.push(tagToToggle);
       }
+      saveSelectedTagsToStorage(state.selectedTags);
     },
     resetSelectedTags: (state) => {
       state.selectedTags = state.availableTags;
+      saveSelectedTagsToStorage(state.selectedTags);
     }
   }
 });
