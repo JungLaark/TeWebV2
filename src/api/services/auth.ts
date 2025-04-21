@@ -66,12 +66,19 @@ export const loginService = {
         // 성공 응답 처리
         if (response.status >= 200 && response.status < 300) {
           // 서버 응답에서 인증 토큰과 결과 정보 추출
-          const serverToken = response.data?.token || response.data?.access_token;
+
+          console.log('response.data: ', response.data);
+
+          //const serverToken = response.data?.token || response.data?.access_token;
+          const serverToken = response.data?.data?.[0]?.token;
           const serverResult = response.data?.result || 'success';
           
           // 로컬 스토리지에 인증 정보 저장
           localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('authToken', serverToken || 'default-token');
+          // Basic Auth를 사용하는 경우, 직접 Basic 토큰을 저장
+          //const basicToken = 'Basic ' + btoa(`${data.username}:${data.password}`);
+          const basicToken = 'Basic ' + btoa(`${data.username}:${data.password}`);
+          localStorage.setItem('token', serverToken);
           localStorage.setItem('lastLoginTime', new Date().toISOString());
           
           console.log('Login successful, redirecting to dashboard...');

@@ -25,9 +25,7 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag }) => {
           // tag.name과 일치하는 TLayout 찾기
           const layout = tLayoutList.find(
             (l: TLayout) =>
-              l.ModelName?.toLowerCase().includes(tag.name.trim().toLowerCase()) ||
-              l.Guid?.toLowerCase().includes(tag.name.trim().toLowerCase()) ||
-              l.DisplayName?.toLowerCase().includes(tag.name.trim().toLowerCase())
+              l.Name?.toLowerCase().includes(tag.name.trim().toLowerCase())
           );
           if (!layout) {
             console.log('layout undefined! tag:', tag, 'tLayoutList:', tLayoutList);

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Tag } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { exportTemplate } from '../../utils/templateExport';
 import { RootState } from '../../store';
-import { addTemplateObjects } from '../../store/features/templateSlice';  // 경로 수정
+import { addTemplateObjects, setTemplates, setLoading, setError } from '../../store/features/templateSlice';  // 경로 수정
 import { updateTagObjects } from '../../store/features/tagObjectsSlice';  // 경로 수정
 import TagList from '../../components/Navbar/TagList'; // 경로 수정
 import Canvas from '../../components/Canvas'; // 경로 수정
@@ -19,6 +19,7 @@ import { handleTemplateFileLoad } from '../../utils/fileHandlers'; // 경로 수
 import { Navbar } from '../../components/Navbar';
 import { isPortrait } from '../../utils/orientationUtils';
 import { OrientationType } from '../../types';
+import { fetchTemplateData } from '../../api/services/template';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +33,28 @@ const Dashboard: React.FC = () => {
   const csvMatches = useSelector((state: RootState) => state.template.Matches);
   const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
   const templateState = useSelector((state: RootState) => state.template);
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        dispatch(setLoading(true));
+        const res = await fetchTemplateData();
+        console.log('[서버에서 받아온 res]:', res);
+        // 응답 구조에 맞게 데이터 추출
+        const templates = res?.data?.[0]?.Templates || [];
+        const matches = res?.data?.[0]?.Matches?.Basic || [];
+        console.log('[서버에서 받아온 templates]:', templates);
+
+        dispatch(setTemplates(templates));
+        dispatch(setBasicMatches(matches));
+        dispatch(setLoading(false));
+      } catch (error) {
+        dispatch(setLoading(false));
+        dispatch(setError('템플릿 정보를 불러오지 못했습니다.'));
+      }
+    };
+    loadTemplates();
+  }, [dispatch]);
 
   const handleTagSelect = (tag: TLayout) => {
     console.log('handleTagSelect called with:', tag);

@@ -28,10 +28,11 @@ httpClient.interceptors.request.use(
       data: config.data || null
     });
     
-    // 인증 토큰 추가
-    const token = localStorage.getItem('authToken');
+    // 인증 토큰 추가 (Basic Auth)
+    // localStorage에서 'token' 키로 값을 읽음
+    const token = localStorage.getItem('token');
     if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = token;
     }
     
     return config;
