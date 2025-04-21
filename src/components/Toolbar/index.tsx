@@ -21,7 +21,7 @@ interface ToolbarProps {
   onManageFonts: () => void;
   onManageImageCodes: () => void;
   onManageReservations: () => void;
-  onLoadTemplate: () => void;
+  onLoadTemplate: (template?: any) => void;  // template 파라미터 추가
   onMergeTemplates: () => void;
   onSaveTemplate: () => void;
   onExportBitmap: () => void;
@@ -43,9 +43,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onLoadFromCoreESN
 }) => {
   const handleLoadTemplate = async () => {
-    const template = await handleTemplateFileLoad();
-    if (template) {
-      onLoadTemplate();  // 부모 컴포넌트에 알림
+    try {
+      const template = await handleTemplateFileLoad();
+      if (template) {
+        // 템플릿이 로드되면 해당 템플릿을 부모 컴포넌트에 전달
+        onLoadTemplate(template);
+      }
+    } catch (error) {
+      console.error('Error loading template:', error);
     }
   };
 

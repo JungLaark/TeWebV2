@@ -17,6 +17,7 @@ interface CanvasProps {
   setSelectedObjectIds: (ids: string[]) => void;
   onAddShape: (type: string) => void;
   onAddText: () => void;
+  onDeleteObjects: (objectIds: string[]) => void; // 객체 삭제 핸들러 추가
 }
 
 const Canvas: React.FC<CanvasProps> = ({ 
@@ -26,7 +27,10 @@ const Canvas: React.FC<CanvasProps> = ({
   onUpdateObjects,
   onObjectSelect,
   selectedObjectIds,
-  setSelectedObjectIds 
+  setSelectedObjectIds,
+  onAddShape,
+  onAddText,
+  onDeleteObjects
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [scale, setScale] = useState(1);
@@ -34,6 +38,14 @@ const Canvas: React.FC<CanvasProps> = ({
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [selectedObjectsInitialPos, setSelectedObjectsInitialPos] = useState<{[key: string]: {x: number, y: number}}>({});
   const [draggingObjects, setDraggingObjects] = useState<{[key: string]: {x: number, y: number}}>({});
+
+  // width, height 변경 시 실제 canvas DOM 속성 동기화
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.width = width;
+      canvasRef.current.height = height;
+    }
+  }, [width, height]);
 
   // 더블 버퍼링을 위한 오프스크린 캔버스 참조 추가
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -53,8 +65,8 @@ const Canvas: React.FC<CanvasProps> = ({
 
   // 객체의 고유 식별자 생성 함수
   const getObjectId = (obj: TObject): string => {
-    // PosX, PosY, Width, Height, Type을 조합하여 고유 식별자 생성
-    return `${obj.Type}_${obj.PosX}_${obj.PosY}_${obj.Width}_${obj.Height}_${obj.ZOrder}`;
+    // 객체의 고유 ID 사용 (이미 TObject 인터페이스에 id 속성이 존재함)
+    return obj.id;
   };
 
   // 객체가 클릭된 위치에 있는지 확인하는 함수
@@ -98,11 +110,15 @@ const Canvas: React.FC<CanvasProps> = ({
   // 마우스 다운 핸들러 수정
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoordinates(e);
+    console.log('Mouse down at coords:', coords);
     
     // 클릭한 위치의 객체 찾기 (ZOrder가 높은 것부터 검사)
-    for (let i = objects.length - 1; i >= 0; i--) {
-      const obj = objects[i];
+    const sortedObjects = [...objects].sort((a, b) => b.ZOrder - a.ZOrder);
+    let objectFound = false;
+    
+    for (const obj of sortedObjects) {
       if (isObjectAtPosition(obj, coords.x, coords.y)) {
+        console.log('Found object at position:', obj);
         setIsDragging(true);
         setDragStartPos(coords);
         
@@ -110,39 +126,58 @@ const Canvas: React.FC<CanvasProps> = ({
         
         // 드래그 시작 시 모든 선택된 객체의 초기 위치 저장
         const initialPositions: {[key: string]: {x: number, y: number}} = {};
-        if (!selectedObjectIds.includes(objId)) {
-          if (!e.ctrlKey) {
-            setSelectedObjectIds([objId]);
-            onObjectSelect(obj);
-            initialPositions[objId] = { x: obj.PosX, y: obj.PosY };
-          } else {
-            setSelectedObjectIds([...selectedObjectIds, objId]);
-            selectedObjectIds.forEach(id => {
+        
+        // Ctrl 키를 누른 상태에서 다중 선택
+        if (e.ctrlKey) {
+          // 이미 선택된 객체를 다시 클릭한 경우 선택 해제 (토글)
+          if (selectedObjectIds.includes(objId)) {
+            const newSelectedIds = selectedObjectIds.filter(id => id !== objId);
+            setSelectedObjectIds(newSelectedIds);
+            onObjectSelect(newSelectedIds.length === 1 
+              ? objects.find(o => getObjectId(o) === newSelectedIds[0]) || null 
+              : null);
+              
+            // 남은 선택된 객체들의 위치 저장
+            newSelectedIds.forEach(id => {
               const selectedObj = objects.find(o => getObjectId(o) === id);
               if (selectedObj) {
                 initialPositions[id] = { x: selectedObj.PosX, y: selectedObj.PosY };
               }
             });
-            initialPositions[objId] = { x: obj.PosX, y: obj.PosY };
+          } else {
+            // 새 객체 선택에 추가
+            const newSelectedIds = [...selectedObjectIds, objId];
+            setSelectedObjectIds(newSelectedIds);
+            onObjectSelect(newSelectedIds.length === 1 ? obj : null);
+            
+            // 모든 선택된 객체의 위치 저장
+            newSelectedIds.forEach(id => {
+              const selectedObj = objects.find(o => getObjectId(o) === id);
+              if (selectedObj) {
+                initialPositions[id] = { x: selectedObj.PosX, y: selectedObj.PosY };
+              }
+            });
           }
         } else {
-          // 이미 선택된 객체들의 초기 위치 저장
-          selectedObjectIds.forEach(id => {
-            const selectedObj = objects.find(o => getObjectId(o) === id);
-            if (selectedObj) {
-              initialPositions[id] = { x: selectedObj.PosX, y: selectedObj.PosY };
-            }
-          });
+          // Ctrl 키 없이 단일 선택
+          console.log('Single select:', objId);
+          setSelectedObjectIds([objId]);
+          onObjectSelect(obj);
+          initialPositions[objId] = { x: obj.PosX, y: obj.PosY };
         }
         
         setSelectedObjectsInitialPos(initialPositions);
-        return;
+        objectFound = true;
+        break;
       }
     }
 
     // 빈 영역 클릭 시 선택 해제
-    setSelectedObjectIds([]);
-    onObjectSelect(null);
+    if (!objectFound && !e.ctrlKey) {
+      console.log('No object found, clearing selection');
+      setSelectedObjectIds([]);
+      onObjectSelect(null);
+    }
   };
 
   // 이전 드래깅 위치를 저장하는 ref 추가
@@ -232,60 +267,168 @@ const Canvas: React.FC<CanvasProps> = ({
 
   // 마우스 이벤트 핸들러
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale;
-    const y = (e.clientY - rect.top) / scale;
-
-    // 역순으로 순회하여 최상위 객체부터 검사
-    for (let i = objects.length - 1; i >= 0; i--) {
-      const obj = objects[i];
-      if (isObjectAtPosition(obj, x, y)) {
-        if (e.ctrlKey || e.metaKey) {
-          // Ctrl/Cmd + 클릭: 다중 선택
-          const newSelectedIds = [...selectedObjectIds];
-          const index = newSelectedIds.indexOf(getObjectId(obj));
-          if (index === -1) {
-            newSelectedIds.push(getObjectId(obj));
-          } else {
-            newSelectedIds.splice(index, 1);
-          }
-          setSelectedObjectIds(newSelectedIds);
-        } else {
-          // 일반 클릭: 단일 선택
-          setSelectedObjectIds([getObjectId(obj)]);
-          onObjectSelect(obj);
-        }
-        return;
-      }
-    }
-
-    // 빈 영역 클릭: 선택 해제
-    setSelectedObjectIds([]);
-    onObjectSelect(null);
+    // 이 함수는 사용하지 않습니다. 객체 선택은 handleMouseDown에서 처리합니다.
   };
 
-  // Canvas 요소에 이벤트 리스너 추가
+  // 객체 삭제 처리 함수 추가
+  const handleDeleteObjects = useCallback(() => {
+    if (selectedObjectIds.length === 0) return;
+    
+    console.log('Delete key pressed. Deleting objects:', selectedObjectIds);
+    
+    // 선택된 객체 ID 목록을 부모 컴포넌트에 전달
+    onDeleteObjects(selectedObjectIds);
+    
+    // 선택 초기화
+    setSelectedObjectIds([]);
+    onObjectSelect(null);
+  }, [selectedObjectIds, onDeleteObjects, onObjectSelect, setSelectedObjectIds]);
+
+  // 키보드 이벤트 핸들러
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Delete' && selectedObjectIds.length > 0) {
+      handleDeleteObjects();
+    }
+  }, [selectedObjectIds, handleDeleteObjects]);
+
+  // 캔버스 요소에 이벤트 리스너 추가
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    canvas.addEventListener('click', handleCanvasClick as any);
-    canvas.addEventListener('mousedown', handleMouseDown as any);
-    canvas.addEventListener('mousemove', handleMouseMove as any);
+    // 이벤트 핸들러 정의
+    const handleCanvasMouseDown = (e: MouseEvent) => handleMouseDown(e as any);
+    const handleCanvasMouseMove = (e: MouseEvent) => handleMouseMove(e as any);
+    const handleCanvasMouseUp = () => handleMouseUp();
+    
+    // 이벤트 리스너 추가 - click 이벤트 제거하고 mousedown만 사용
+    canvas.addEventListener('mousedown', handleCanvasMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('mouseleave', handleMouseUp);
 
+    // 키보드 이벤트 리스너 추가 (document 레벨에 추가)
+    document.addEventListener('keydown', handleKeyDown);
+    // 마우스 이동은 document 레벨에서 처리
+    document.addEventListener('mousemove', handleCanvasMouseMove);
+
     return () => {
-      canvas.removeEventListener('click', handleCanvasClick as any);
-      canvas.removeEventListener('mousedown', handleMouseDown as any);
-      canvas.removeEventListener('mousemove', handleMouseMove as any);
+      // 모든 이벤트 리스너 제거
+      canvas.removeEventListener('mousedown', handleCanvasMouseDown);
       canvas.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('mouseleave', handleMouseUp);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousemove', handleCanvasMouseMove);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
-  }, [objects, scale, selectedObjectIds, isDragging, dragStartPos, selectedObjectsInitialPos, draggingObjects]);
+  }, [objects, scale, selectedObjectIds, isDragging, dragStartPos, selectedObjectsInitialPos, draggingObjects, handleKeyDown, handleMouseMove]);
+
+  // 객체 그리기 함수 통합 (먼저 선언)
+  const drawObject = useCallback(async (ctx: CanvasRenderingContext2D, obj: TObject) => {
+    const typeLoweCase = obj.Type.toLowerCase();
+    
+    switch (typeLoweCase) {
+      case 'rect':
+        drawRect(ctx, obj);
+        break;
+      case 'circle':
+      case 'ellipse':
+        drawCircle(ctx, obj);
+        break;
+      case 'triangle':
+        drawTriangle(ctx, obj);
+        break;
+      case 'text':
+        drawText(ctx, obj);
+        break;
+      case 'line':
+        drawLine(ctx, obj);
+        break;
+      case 'polygon':
+        drawPolygon(ctx, obj);
+        break;
+      case 'polyline':
+        drawPolyline(ctx, obj);
+        break;
+      case 'image':
+        if (obj.ImageBase64) {
+          await drawImageWithCache(ctx, obj);
+        }
+        break;
+      case 'barcode':
+        await drawBarcode(ctx, obj);
+        break;
+      case 'qrcode':
+        await drawQRCode(ctx, obj);
+        break;
+      default:
+        console.warn('Unknown object type:', obj.Type);
+    }
+  }, []);
+
+  const drawSelectionBox = (ctx: CanvasRenderingContext2D, obj: TObject) => {
+    // 현재 객체의 ID가 선택된 객체들의 ID 목록에 있는지 확인
+    const objectId = getObjectId(obj);
+    if (selectedObjectIds.includes(objectId)) {
+      ctx.save();
+      ctx.strokeStyle = '#0066ff';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(
+        obj.PosX - 5, 
+        obj.PosY - 5, 
+        obj.Width + 10, 
+        obj.Height + 10
+      );
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  };
+
+  // 렌더링 함수 최적화
+  const renderCanvas = useCallback(async (
+    ctx: CanvasRenderingContext2D, 
+    canvas: HTMLCanvasElement,
+    objectsToRender: TObject[]
+  ) => {
+    const offscreenCanvas = offscreenCanvasRef.current;
+    const offscreenCtx = offscreenCanvas?.getContext('2d', { alpha: false });
+    
+    if (!offscreenCtx || !offscreenCanvas) return;
+
+    // 캔버스 초기화
+    offscreenCtx.fillStyle = 'white';
+    offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // ZOrder로 정렬된 객체 그리기
+    const sortedObjects = [...objectsToRender].sort((a, b) => a.ZOrder - b.ZOrder);
+    
+    // 모든 객체 렌더링
+    for (const obj of sortedObjects) {
+      offscreenCtx.save();
+      try {
+        await drawObject(offscreenCtx, obj);
+        // 선택된 객체에 대해서만 선택 박스 그리기
+        if (selectedObjectIds.includes(getObjectId(obj))) {
+          drawSelectionBox(offscreenCtx, obj);
+        }
+      } finally {
+        offscreenCtx.restore();
+      }
+    }
+
+    // 메인 캔버스에 복사
+
+    if (offscreenCanvas.width === 0 || offscreenCanvas.height === 0) {
+      console.warn('[Canvas] offscreenCanvas 크기가 0입니다. drawImage를 건너뜁니다.');
+      return;
+    }
+
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(offscreenCanvas, 0, 0);
+  }, [selectedObjectIds]);
 
   // 도형 그리기 함수들
   const drawRect = (ctx: CanvasRenderingContext2D, obj: TObject) => {
@@ -377,38 +520,49 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   const drawCircle = (ctx: CanvasRenderingContext2D, obj: TObject) => {
-    ctx.beginPath();
+    console.log('Drawing circle/ellipse with:', obj);
+    ctx.save();
     
-    // 회전 적용
-    if (obj.Rotation) {
+    try {
+      // 회전 적용
+      if (obj.Rotation) {
+        const centerX = obj.PosX + obj.Width / 2;
+        const centerY = obj.PosY + obj.Height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((obj.Rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
+      }
+
+      // 선 스타일 설정
+      ctx.strokeStyle = obj.PenColor;
+      ctx.lineWidth = obj.PenWidth;
+      
       const centerX = obj.PosX + obj.Width / 2;
       const centerY = obj.PosY + obj.Height / 2;
-      ctx.translate(centerX, centerY);
-      ctx.rotate((obj.Rotation * Math.PI) / 180);
-      ctx.translate(-centerX, -centerY);
-    }
+      const radiusX = obj.Width / 2;
+      const radiusY = obj.Height / 2;
+      
+      // 타원 그리기
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+      
+      // 채우기 설정
+      if (obj.IsFilled) {
+        ctx.fillStyle = obj.FillColor;
+        ctx.fill();
+      }
 
-    // 선 스타일 설정
-    ctx.strokeStyle = obj.PenColor;
-    ctx.lineWidth = obj.PenWidth;
-    
-    const centerX = obj.PosX + obj.Width / 2;
-    const centerY = obj.PosY + obj.Height / 2;
-    const radiusX = obj.Width / 2;
-    const radiusY = obj.Height / 2;
-    
-    // 타원 그리기
-    ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
-    
-    // 채우기 설정
-    if (obj.IsFilled) {
-      ctx.fillStyle = obj.FillColor;
-      ctx.fill();
-    }
-
-    if (obj.ShowBoarder) {
+      // 테두리 그리기 (ShowBoarder 값에 상관없이 항상 테두리 그리기)
       ctx.stroke();
+      
+      // 디버깅용 중심점 표시
+      ctx.fillStyle = 'red';
+      ctx.fillRect(centerX - 2, centerY - 2, 4, 4);
+    } catch (error) {
+      console.error('Error drawing circle/ellipse:', error);
     }
+    
+    ctx.restore();
   };
 
   const extractFontInfo = (fontStr: string): { size: number; family: string } => {
@@ -504,8 +658,22 @@ const Canvas: React.FC<CanvasProps> = ({
   // 이미지 그리기 함수 수정
   const drawImage = (ctx: CanvasRenderingContext2D, obj: TObject, img: HTMLImageElement) => {
     try {
+
+
+
+      if (!img || img.width === 0 || img.height === 0) {
+        console.error('[drawImage] 이미지의 width 또는 height가 0입니다.', img);
+        return;
+      }
+
       ctx.save();
-  
+
+      // 디버깅용 로그 추가
+      console.log('[drawImage] obj:', obj);
+      console.log('[drawImage] obj.Width:', obj.Width, 'obj.Height:', obj.Height);
+      console.log('[drawImage] img:', img);
+      console.log('[drawImage] img.width:', img?.width, 'img.height:', img?.height);
+
       // 회전 처리
       if (obj.Rotation) {
         const centerX = obj.PosX + obj.Width / 2;
@@ -522,6 +690,18 @@ const Canvas: React.FC<CanvasProps> = ({
           ctx.lineWidth = obj.PenWidth;
           ctx.strokeRect(obj.PosX, obj.PosY, obj.Width, obj.Height);
         }
+        ctx.restore();
+        return;
+      }
+
+      // drawImage 호출 전 방어 코드 추가
+      if (
+        !img ||
+        img.width === 0 ||
+        img.height === 0 ||
+        obj.Width === 0 ||
+        obj.Height === 0
+      ) {
         ctx.restore();
         return;
       }
@@ -543,20 +723,19 @@ const Canvas: React.FC<CanvasProps> = ({
           break;
   
         case 2: // Stretch - 비율 유지하며 맞추기
-          {const scale = Math.min(obj.Width / img.width, obj.Height / img.height);
-          const scaledWidth = img.width * scale;
-          const scaledHeight = img.height * scale;
-          const x = obj.PosX + (obj.Width - scaledWidth) / 2;
-          const y = obj.PosY + (obj.Height - scaledHeight) / 2;
-          
-          // 이미지 그리기 전 클리핑 영역 설정
-          ctx.beginPath();
-          ctx.rect(obj.PosX, obj.PosY, obj.Width, obj.Height);
-          ctx.clip();
-          
-          // 이미지 그리기
-          ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-          break;
+          {
+            const scale = Math.min(obj.Width / img.width, obj.Height / img.height);
+            const scaledWidth = img.width * scale;
+            const scaledHeight = img.height * scale;
+            const x = obj.PosX + (obj.Width - scaledWidth) / 2;
+            const y = obj.PosY + (obj.Height - scaledHeight) / 2;
+            // 이미지 그리기 전 클리핑 영역 설정
+            ctx.beginPath();
+            ctx.rect(obj.PosX, obj.PosY, obj.Width, obj.Height);
+            ctx.clip();
+            // 이미지 그리기
+            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            break;
           }
       }
   
@@ -734,83 +913,180 @@ const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
-  const drawSelectionBox = (ctx: CanvasRenderingContext2D, obj: TObject) => {
-    // 현재 객체의 ID가 선택된 객체들의 ID 목록에 있는지 확인
-    if (selectedObjectIds.includes(getObjectId(obj))) {
-      ctx.strokeStyle = '#0066ff';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([5, 5]);
-      ctx.strokeRect(
-        obj.PosX - 5, 
-        obj.PosY - 5, 
-        obj.Width + 10, 
-        obj.Height + 10
-      );
-      ctx.setLineDash([]);
+  // 삼각형 그리기 함수 추가
+  const drawTriangle = (ctx: CanvasRenderingContext2D, obj: TObject) => {
+    ctx.save();
+    
+    try {
+      // 회전 처리
+      if (obj.Rotation) {
+        const centerX = obj.PosX + obj.Width / 2;
+        const centerY = obj.PosY + obj.Height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((obj.Rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
+      }
+
+      // 삼각형 경로 설정
+      ctx.beginPath();
+      ctx.moveTo(obj.PosX + obj.Width / 2, obj.PosY); // 상단 중앙
+      ctx.lineTo(obj.PosX + obj.Width, obj.PosY + obj.Height); // 우측 하단
+      ctx.lineTo(obj.PosX, obj.PosY + obj.Height); // 좌측 하단
+      ctx.closePath();
+
+      // 채우기 설정
+      if (obj.IsFilled) {
+        ctx.fillStyle = obj.FillColor;
+        ctx.fill();
+      }
+
+      // 테두리 그리기
+      if (obj.ShowBoarder) {
+        ctx.strokeStyle = obj.PenColor;
+        ctx.lineWidth = obj.PenWidth;
+        ctx.stroke();
+      }
+    } catch (error) {
+      console.error('Error drawing triangle:', error);
     }
+
+    ctx.restore();
   };
 
-  // 렌더링 함수 최적화
-  const renderCanvas = useCallback(async (
-    ctx: CanvasRenderingContext2D, 
-    canvas: HTMLCanvasElement,
-    objectsToRender: TObject[]
-  ) => {
-    const offscreenCanvas = offscreenCanvasRef.current;
-    const offscreenCtx = offscreenCanvas?.getContext('2d', { alpha: false });
+  // 선 그리기 함수 추가
+  const drawLine = (ctx: CanvasRenderingContext2D, obj: TObject) => {
+    ctx.save();
     
-    if (!offscreenCtx || !offscreenCanvas) return;
-
-    // 캔버스 초기화
-    offscreenCtx.fillStyle = 'white';
-    offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // ZOrder로 정렬된 객체 그리기
-    const sortedObjects = [...objectsToRender].sort((a, b) => a.ZOrder - b.ZOrder);
-    
-    // 모든 객체 렌더링
-    for (const obj of sortedObjects) {
-      offscreenCtx.save();
-      try {
-        await drawObject(offscreenCtx, obj);
-        if (selectedObjectIds.includes(getObjectId(obj))) {
-          drawSelectionBox(offscreenCtx, obj);
-        }
-      } finally {
-        offscreenCtx.restore();
+    try {
+      // 회전 처리
+      if (obj.Rotation) {
+        const centerX = obj.PosX + obj.Width / 2;
+        const centerY = obj.PosY + obj.Height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((obj.Rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
       }
+
+      // 선 경로 설정
+      ctx.beginPath();
+      ctx.moveTo(obj.PosX, obj.PosY);
+      ctx.lineTo(obj.PosX + obj.Width, obj.PosY + obj.Height);
+
+      // 선 스타일 설정
+      ctx.strokeStyle = obj.PenColor;
+      ctx.lineWidth = obj.PenWidth;
+      ctx.stroke();
+    } catch (error) {
+      console.error('Error drawing line:', error);
     }
 
-    // 메인 캔버스에 복사
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(offscreenCanvas, 0, 0);
-  }, [selectedObjectIds]);
+    ctx.restore();
+  };
 
-  // 객체 그리기 함수 통합
-  const drawObject = async (ctx: CanvasRenderingContext2D, obj: TObject) => {
-    switch (obj.Type.toLowerCase()) {
-      case 'rect':
-        drawRect(ctx, obj);
-        break;
-      case 'ellipse':
-        drawCircle(ctx, obj);
-        break;
-      case 'text':
-        drawText(ctx, obj);
-        break;
-      case 'image':
-        if (obj.ImageBase64) {
-          await drawImageWithCache(ctx, obj);
+  // 다각형 그리기 함수 추가
+  const drawPolygon = (ctx: CanvasRenderingContext2D, obj: TObject) => {
+    ctx.save();
+    
+    try {
+      // 회전 처리
+      if (obj.Rotation) {
+        const centerX = obj.PosX + obj.Width / 2;
+        const centerY = obj.PosY + obj.Height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((obj.Rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
+      }
+
+      const sides = 6; // 육각형
+      const centerX = obj.PosX + obj.Width / 2;
+      const centerY = obj.PosY + obj.Height / 2;
+      const radius = Math.min(obj.Width, obj.Height) / 2;
+
+      // 다각형 경로 설정
+      ctx.beginPath();
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
         }
-        break;
-      case 'barcode':
-        await drawBarcode(ctx, obj);
-        break;
-      case 'qrcode':
-        await drawQRCode(ctx, obj);
-        break;
+      }
+      ctx.closePath();
+
+      // 채우기 설정
+      if (obj.IsFilled) {
+        ctx.fillStyle = obj.FillColor;
+        ctx.fill();
+      }
+
+      // 테두리 그리기
+      if (obj.ShowBoarder) {
+        ctx.strokeStyle = obj.PenColor;
+        ctx.lineWidth = obj.PenWidth;
+        ctx.stroke();
+      }
+    } catch (error) {
+      console.error('Error drawing polygon:', error);
     }
+
+    ctx.restore();
+  };
+
+  // 폴리라인 그리기 함수 추가
+  const drawPolyline = (ctx: CanvasRenderingContext2D, obj: TObject) => {
+    ctx.save();
+    
+    try {
+      // 회전 처리
+      if (obj.Rotation) {
+        const centerX = obj.PosX + obj.Width / 2;
+        const centerY = obj.PosY + obj.Height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((obj.Rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
+      }
+
+      const sides = 5; // 오각형
+      const centerX = obj.PosX + obj.Width / 2;
+      const centerY = obj.PosY + obj.Height / 2;
+      const radius = Math.min(obj.Width, obj.Height) / 2;
+
+      // 폴리라인 경로 설정 (오각형)
+      ctx.beginPath();
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides - Math.PI / 2; // 위쪽부터 시작
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+
+      // 채우기 설정
+      if (obj.IsFilled) {
+        ctx.fillStyle = obj.FillColor;
+        ctx.fill();
+      }
+
+      // 테두리 그리기
+      if (obj.ShowBoarder) {
+        ctx.strokeStyle = obj.PenColor;
+        ctx.lineWidth = obj.PenWidth;
+        ctx.stroke();
+      }
+    } catch (error) {
+      console.error('Error drawing polyline:', error);
+    }
+
+    ctx.restore();
   };
 
   // 이미지 캐싱 처리

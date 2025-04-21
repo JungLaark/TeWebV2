@@ -51,6 +51,19 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     });
   };
 
+  const handlePropertyChange = (property: keyof TObject, value: any) => {
+    if (!selectedObject) return;
+
+    // 속성 업데이트
+    const updatedObject = {
+      ...selectedObject,
+      [property]: value
+    };
+
+    // 부모 컴포넌트에 변경사항 전달
+    onUpdateObject(updatedObject);
+  };
+
   if (!selectedObject) {
     return (
       <div className="p-4 text-gray-300">
@@ -84,6 +97,34 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           <div 
             className="w-6 h-6 border border-gray-600 rounded"
             style={{ backgroundColor: currentValue }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // 텍스트 객체일 때 추가 속성
+  const renderTextProperties = () => {
+    if (selectedObject?.Type !== 'Text') return null;
+
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">텍스트</label>
+          <input
+            type="text"
+            value={selectedObject.Text || ''}
+            onChange={(e) => handlePropertyChange('Text', e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">폰트</label>
+          <input
+            type="text"
+            value={selectedObject.Font}
+            onChange={(e) => handlePropertyChange('Font', e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1"
           />
         </div>
       </div>
@@ -207,6 +248,9 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           />
         </div>
       </div>
+
+      {/* 텍스트 속성 */}
+      {renderTextProperties()}
     </div>
   );
 };

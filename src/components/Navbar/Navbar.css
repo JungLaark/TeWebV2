@@ -1,157 +1,233 @@
-.navbar {
-  width: 200px;
-  background-color: #2D3748;
-  color: #FFFFFF;
+/* 전체 네비게이션 컨테이너 */
+.navbar-container {
+  width: 240px;
   height: 100vh;
-  @apply p-4 flex flex-col;
-  overflow: hidden; /* 전체 스크롤 제거 */
+  display: flex;
+  flex-direction: column;
+  background-color: #2D3748;
+  color: white;
+  position: relative;
+  overflow: auto; /* visible에서 변경 - 스크롤 가능하면서 sticky 작동하도록 */
 }
 
+/* 네비게이션 헤더 - 헤더 고정 - 중요! */
 .navbar-header {
-  padding: 1rem;
-  @apply flex flex-col;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #2D3748;
+  border-bottom: 1px solid #4A5568;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000; /* 최상위 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  min-height: 56px;
+  width: 100%;
 }
 
 .navbar-header h2 {
-  @apply text-lg font-semibold text-white;
-  font-size: 1.25rem;
-  font-weight: bold;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.manage-tags-button {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #63B3ED;
+  border-radius: 4px;
+  transition: all 0.2s;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.manage-tags-button:hover {
+  background-color: rgba(59, 130, 246, 0.25);
+  color: #90CDF4;
+}
+
+/* 스크롤 가능한 내용 영역 */
+.navbar-scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #4A5568 #1A202C;
+  /* height: calc(100vh - 56px); */ /* 헤더 제외한 높이 - 주석 처리 */
+  height: calc(100% - 56px); /* 헤더 제외한 높이로 수정 */
+  position: relative;
+  contain: content; /* strict에서 변경 - 더 나은 스크롤 동작 */
+}
+
+/* TagList 관련 스타일 */
+.taglist-wrapper {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
 }
 
-.navbar-title {
-  @apply text-xl font-bold mb-4 text-center;
+/* 카테고리 래퍼 */
+.category-wrapper {
+  margin-bottom: 2px;
+  flex-shrink: 0;
 }
 
-.navbar-content {
-  @apply flex-1 overflow-y-auto;
+/* 카테고리 헤더 스티키 - 개선 */
+.category-header-sticky {
+  position: -webkit-sticky !important; /* Safari 지원 추가 */
+  position: sticky !important;
+  top: 56px; /* 메인 헤더 높이만큼 오프셋 */
+  z-index: 40;
+  background-color: #2D3748;
+  width: 100%;
+  display: block; /* 명시적 display 설정 */
 }
 
-.tag-item {
-  padding: 0.75rem;
-  background-color: #4A5568;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  @apply w-full p-2 rounded-lg cursor-pointer transition-colors;
-}
-
-.tag-item:hover {
-  background-color: #3B4252;
-}
-
-.tag-item.selected {
-  @apply bg-blue-600 hover:bg-blue-500;
-}
-
-.tag-item:not(.selected) {
-  @apply bg-gray-700 hover:bg-gray-600;
-}
-
-.tag-item .tag-info {
+/* 카테고리 헤더 버튼 */
+.category-header-button {
+  width: 100%;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: #3c4859;
+  transition: all 0.2s;
+  border: none;
+  color: white;
+  text-align: left;
+  border-left: 3px solid transparent;
+  cursor: pointer;
 }
 
-.tag-item .tag-info span {
-  font-weight: medium;
+.category-header-button:hover {
+  background-color: #4a5d75;
+  border-left: 3px solid #63B3ED;
 }
 
-.tag-item .tag-info .bookmark {
-  width: 1rem;
-  height: 1rem;
+/* 카테고리 아이템 컨테이너 */
+.category-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  max-height: 300px; /* 높이 제한 */
+  overflow-y: auto;
+  background-color: #2D3748;
+  scrollbar-width: thin;
 }
 
-.tag-item .tag-details {
-  font-size: 0.875rem;
-  color: #A0AEC0;
-  margin-top: 0.25rem;
+/* 템플릿 그룹 */
+.template-group {
+  display: flex;
+  flex-direction: column;
+  background-color: #333f54;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
 }
 
-.category-item {
-  @apply mb-2;
+/* 템플릿 아이템 */
+.template-item {
+  padding: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.category-button {
-  @apply w-full flex items-center justify-between p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors mb-1;
+.template-selected {
+  background-color: #3182CE;
 }
 
-.category-label {
-  @apply text-sm font-medium;
+.template-normal {
+  background-color: #475569;
 }
 
-.tag-list {
-  @apply w-full flex flex-col gap-1;
+.template-normal:hover {
+  background-color: #4B5563;
 }
 
-.tag-content {
-  @apply w-full flex items-center justify-between;
+/* 자식 템플릿 컨테이너 */
+.child-templates-container {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  background-color: #2a3649;
 }
 
-.tag-list {
-  @apply pl-2 space-y-1 transition-all;
+/* 자식 템플릿 아이템 */
+.child-template-item {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0.125rem 0;
+  border-left: 2px solid transparent;
 }
 
-.tag-content {
-  @apply text-sm flex items-center justify-between;
+.child-selected {
+  background-color: #3182CE;
+  border-left: 2px solid #90CDF4;
 }
 
-.tag-name {
-  @apply font-medium;
+.child-normal {
+  background-color: rgba(71, 85, 105, 0.6);
+  border-left: 2px solid transparent;
 }
 
-.tag-size {
-  @apply text-xs text-gray-300 ml-2;
+.child-normal:hover {
+  background-color: rgba(75, 85, 99, 0.8);
+  border-left: 2px solid #63B3ED;
 }
 
 /* 스크롤바 스타일 */
-.scrollbar-thin::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-.scrollbar-thin::-webkit-scrollbar-track {
-  background-color: #1F2937; /* gray-800 */
+::-webkit-scrollbar-track {
+  background: #1A202C;
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #374151; /* gray-700 */
+::-webkit-scrollbar-thumb {
+  background: #4A5568;
   border-radius: 3px;
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: #4B5563; /* gray-600 */
+::-webkit-scrollbar-thumb:hover {
+  background: #718096;
 }
 
-.category-section {
-  height: 220px; /* 각 섹션 동일 높이 */
-  min-height: 220px; /* 최소 높이 보장 */
-  overflow-y: auto;
-  padding: 0.5rem;
-  border-bottom: 1px solid #374151;
+.scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: #374151 #1F2937; /* thumb track */
+  scrollbar-color: #4A5568 #1A202C;
 }
 
-.category-section:last-child {
-  border-bottom: none;
+/* 추가: 모든 sticky 헤더를 위한 공통 스타일 */
+.sticky-header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background-color: #2D3748;
+  border-bottom: 1px solid #4A5568;
 }
 
-.category-section::-webkit-scrollbar {
-  width: 6px;
-}
-
-.category-section::-webkit-scrollbar-track {
-  background: #1F2937; /* gray-800 */
-}
-
-.category-section::-webkit-scrollbar-thumb {
-  background-color: #374151; /* gray-700 */
-  border-radius: 3px;
-}
-
-.category-section::-webkit-scrollbar-thumb:hover {
-  background-color: #4B5563; /* gray-600 */
+/* 추가: TagList 헤더용 스타일 */
+.tag-list-header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 9000 !important;
+  background-color: #2D3748;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #4A5568;
 }

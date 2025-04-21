@@ -1,9 +1,36 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { TLayout } from '../../types/TLayout';
+import { TLayout, ModelType, OrientationType, DirectionType, TemplateEnum } from '../../types/TLayout';
 import { CSVColumnMatch } from '../../types/CSVColumnMatch';
+import tagList from '../../types/tagList';
+
+// Tag[]를 TLayout[]으로 변환
+const tLayoutList: TLayout[] = tagList.map(tag => ({
+  Guid: tag.name,
+  Name: tag.name,
+  Model: ModelType.M21, // 임의 기본값
+  DisplayName: tag.name,
+  Bookmark: false,
+  Width: tag.width,
+  Height: tag.height,
+  Orientation: tag.width > tag.height ? OrientationType.Landscape : OrientationType.Portrait,
+  Direction: DirectionType.Default,
+  Upsidedown: false,
+  Column: 1,
+  Row: 1,
+  BGColor: 'White',
+  TWidth: tag.width,
+  THeight: tag.height,
+  Default: false,
+  TType: 'Normal',
+  TValue: '',
+  PValue: '',
+  TemplateType: TemplateEnum.Normal,
+  Objects: [],
+}));
 
 interface TemplateState {
   currentTemplate: TLayout | null;
+  templates: TLayout[];
   isLoading: boolean;
   error: string | null;
   Matches: {
@@ -13,6 +40,7 @@ interface TemplateState {
 
 const initialState: TemplateState = {
   currentTemplate: null,
+  templates: tLayoutList,
   isLoading: false,
   error: null,
   Matches: {
@@ -69,6 +97,12 @@ export const templateSlice = createSlice({
       }
       
       state.currentTemplate.Objects = action.payload.objects;
+    },
+    setTemplates: (state, action: PayloadAction<TLayout[]>) => {
+      state.templates = action.payload;
+    },
+    addTemplate: (state, action: PayloadAction<TLayout>) => {
+      state.templates.push(action.payload);
     }
   }
 });
@@ -80,7 +114,9 @@ export const {
   clearTemplate,
   setBasicMatches,
   updateColumnMatch,
-  addTemplateObjects
+  addTemplateObjects,
+  setTemplates,
+  addTemplate 
 } = templateSlice.actions;
 
 export default templateSlice.reducer;

@@ -43,6 +43,7 @@ export interface TLayout {
   Model: ModelType;
   DisplayName: string;
   Bookmark: boolean;
+  ModelName: string;
   Width: number;
   Height: number;
   Orientation: OrientationType;

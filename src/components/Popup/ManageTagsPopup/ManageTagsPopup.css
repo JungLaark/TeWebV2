@@ -1,0 +1,74 @@
+.manage-tags-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .manage-tags-popup {
+    background: #2d3748;
+    color: white;
+    width: 700px;
+    height: 80vh;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  
+  .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #4a5568;
+    border-bottom: 1px solid #718096;
+  }
+  
+  .popup-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+  
+  .close-button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+  }
+  
+  .popup-content {
+    padding: 1rem;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  
+  .tag-item {
+    margin-bottom: 0.5rem;
+  }
+  
+  .popup-footer {
+    padding: 1rem;
+    text-align: right;
+    background: #4a5568;
+    border-top: 1px solid #718096;
+  }
+  
+  .save-button {
+    background: #3182ce;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .save-button:hover {
+    background: #4299e1;
+  }

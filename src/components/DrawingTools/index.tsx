@@ -17,30 +17,42 @@ interface DrawingToolsProps {
 }
 
 const DrawingTools: React.FC<DrawingToolsProps> = ({ onAddShape, onAddText }) => {
+  console.log('DrawingTools rendered', { onAddShape, onAddText });
+
+  const handleShapeClick = (type: string) => {
+    console.log('Shape button clicked:', type);
+    onAddShape(type);
+  };
+
+  const handleTextClick = () => {
+    console.log('Text button clicked');
+    onAddText();
+  };
+
   return (
     <div className="drawing-tools bg-gray-800 p-2 border-t border-gray-700 flex justify-center space-x-2">
-      <button onClick={() => onAddShape('rect')} className="toolbar-button" title="Rectangle">
+      <button onClick={() => handleShapeClick('rect')} className="toolbar-button" title="Rectangle">
         <Square size={18} />
       </button>
-      <button onClick={() => onAddShape('circle')} className="toolbar-button" title="Circle">
+      <button onClick={() => handleShapeClick('ellipse')} className="toolbar-button" title="Circle">
         <Circle size={18} />
       </button>
-      <button onClick={() => onAddShape('triangle')} className="toolbar-button" title="Triangle">
+      <button onClick={() => handleShapeClick('triangle')} className="toolbar-button" title="Triangle">
         <Triangle size={18} />
       </button>
-      <button onClick={() => onAddShape('ellipse')} className="toolbar-button" title="Ellipse">
+      <button onClick={() => handleShapeClick('ellipse')} className="toolbar-button" title="Ellipse">
         <Ellipse size={18} />
       </button>
-      <button onClick={() => onAddShape('line')} className="toolbar-button" title="Line">
+      <button onClick={() => handleShapeClick('line')} className="toolbar-button" title="Line">
         <Minus size={18} />
       </button>
-      <button onClick={() => onAddShape('polygon')} className="toolbar-button" title="Polygon">
+      <button onClick={() => handleShapeClick('polygon')} className="toolbar-button" title="Polygon">
         <Hexagon size={18} />
       </button>
-      <button onClick={() => onAddShape('polyline')} className="toolbar-button" title="Polyline">
+      <button onClick={() => handleShapeClick('polyline')} className="toolbar-button" title="Polyline">
         <Pentagon size={18} />
       </button>
-      <button onClick={onAddText} className="toolbar-button" title="Add Text">
+      <button onClick={handleTextClick} className="toolbar-button" title="Add Text">
         <Type size={18} />
       </button>
     </div>

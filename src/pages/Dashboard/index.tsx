@@ -7,13 +7,18 @@ import { RootState } from '../../store';
 import { addTemplateObjects } from '../../store/features/templateSlice';  // 경로 수정
 import { updateTagObjects } from '../../store/features/tagObjectsSlice';  // 경로 수정
 import TagList from '../../components/Navbar/TagList'; // 경로 수정
-import Canvas from '../../components/Canvas';
+import Canvas from '../../components/Canvas'; // 경로 수정
 import { PropertyPanel } from '../../components/PropertyPanel';
 import { Toolbar } from '../../components/Toolbar';
 import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
 import { TLayout, TObject } from '../../types';  // CanvasObjectProperties를 TObject로 변경
 import ManageCSVPopup from '../../components/Popup/ManageCSVPopup';
+import ManageTagsPopup from '../../components/Popup/ManageTagsPopup';
 import { ContextMenuProvider } from '../../components/ContextMenu/ContextMenuProvider';
+import { handleTemplateFileLoad } from '../../utils/fileHandlers'; // 경로 수정
+import { Navbar } from '../../components/Navbar';
+import { isPortrait } from '../../utils/orientationUtils';
+import { OrientationType } from '../../types';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -22,38 +27,62 @@ const Dashboard: React.FC = () => {
   const [selectedObject, setSelectedObject] = useState<TObject | null>(null); // CanvasObjectProperties를 TObject로 변경
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
   const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
+  const [isManageTagsPopupOpen, setIsManageTagsPopupOpen] = useState(false);
 
   const csvMatches = useSelector((state: RootState) => state.template.Matches);
   const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
   const templateState = useSelector((state: RootState) => state.template);
 
-  const handleTagSelect = (tag: TLayout) => {  // TagItem을 TLayout으로 변경
-    console.log('Selected tag:', tag); // 디버깅용
+  const handleTagSelect = (tag: TLayout) => {
+    console.log('handleTagSelect called with:', tag);
     setSelectedTag(tag);
     setSelectedObject(null);
+    setSelectedObjectIds([]); // 태그 변경 시 선택 초기화
+    // tag.Objects가 존재하고, 1개 이상일 때만 store에 반영
+    if (tag.Objects && tag.Objects.length > 0) {
+      dispatch(updateTagObjects({
+        tagName: tag.Name,
+        objects: tag.Objects
+      }));
+    }
   };
+
+  const handleManageTags = () => {
+    setIsManageTagsPopupOpen(true);
+  }
 
   const handleObjectSelect = (object: TObject | null) => { // CanvasObjectProperties를 TObject로 변경
     setSelectedObject(object);
   };
 
   const handleAddShape = (type: string) => {
-    if (!selectedTag) return;
+    console.log('handleAddShape called with type:', type);
+    console.log('selectedTag:', selectedTag);
+    
+    if (!selectedTag) {
+      console.warn('No tag selected, cannot add shape');
+      return;
+    }
+
+    // ShowBoarder를 true로 설정하여 도형이 잘 보이도록 수정
+    // 중앙 위치 계산
+    const centerX = (selectedTag.Width - 100) / 2;
+    const centerY = (selectedTag.Height - 100) / 2;
 
     console.log('Selected tag:', selectedTag);
     const currentObjects = tagObjects[selectedTag.Name] || [];
     console.log('Current tag objects:', currentObjects);
 
-    const newObject: TObject = { // CanvasObjectProperties를 TObject로 변경
+    const newObject: TObject = {
       id: `${type}_${Date.now()}`,
       Type: type,
       ZOrder: 0,
-      PenWidth: 1,
+      PenWidth: 2, // 선 두께 증가
       PenColor: "Black",
       FillColor: "White",
       IsFilled: false,
-      PosX: selectedTag.Width / 2 - 50,  // 중앙 위치
-      PosY: selectedTag.Height / 2 - 50,  // 중앙 위치
+      PosX: centerX,
+      PosY: centerY,
       PosX1: 0,
       PosY1: 0,
       Height: 100,
@@ -61,6 +90,82 @@ const Dashboard: React.FC = () => {
       Rotation: 0,
       Font: "Arial, 12pt",
       Text: null,
+      Align: 0,
+      VAlign: 1,
+      DataName: null,
+      ShowBarcodeLabel: false,
+      ShowBoarder: true, // 테두리 표시 활성화
+      ArcsWidth: 20,
+      Margin: 0,
+      Arrow: 0,
+      ArrowSize: 5,
+      BorderShape: 0,
+      Newline: "",
+      Subject: "",
+      CodeType: 0,
+      Reference: 0,
+      SizeMode: 2,
+      ProductID: 0,
+      MultiFacingMode: false,
+      SingleLine: true,
+      LineHeight: 16,
+      ImageBase64: null
+    };
+
+    const updatedObjects = [...currentObjects, newObject];
+    console.log('Updated objects:', updatedObjects);
+    
+    // 두 액션을 디스패치
+    try {
+      //태그별 객체 상태 업데이트
+      dispatch(updateTagObjects({ 
+        tagName: selectedTag.Name, 
+        objects: updatedObjects 
+      }));
+      
+      //템플릿 객체 상태 업데이트
+      dispatch(addTemplateObjects({ 
+        tagName: selectedTag.Name, 
+        objects: updatedObjects 
+      }));
+      
+      setSelectedObject(newObject);
+      setSelectedObjectIds([newObject.id]);
+      console.log('Shape added successfully:', newObject);
+    } catch (error) {
+      console.error('Error adding shape:', error);
+    }
+  };
+
+  const handleAddText = () => {
+    console.log('handleAddText called');
+    
+    if (!selectedTag) {
+      console.warn('No tag selected, cannot add text');
+      return;
+    }
+
+    // 중앙 위치 계산
+    const centerX = (selectedTag.Width - 200) / 2;  // 텍스트 기본 너비의 절반을 빼서 중앙 정렬
+    const centerY = (selectedTag.Height - 30) / 2;  // 텍스트 기본 높이의 절반을 빼서 중앙 정렬
+
+    const newText: TObject = {
+      id: `text_${Date.now()}`,
+      Type: 'text',
+      ZOrder: 0,
+      PenWidth: 1,
+      PenColor: "Black",
+      FillColor: "White",
+      IsFilled: false,
+      PosX: centerX,
+      PosY: centerY,
+      PosX1: 0,
+      PosY1: 0,
+      Height: 30,
+      Width: 200,
+      Rotation: 0,
+      Font: "Arial, 12pt",
+      Text: "Double click to edit",
       Align: 0,
       VAlign: 1,
       DataName: null,
@@ -83,52 +188,71 @@ const Dashboard: React.FC = () => {
       ImageBase64: null
     };
 
-    const updatedObjects = [...currentObjects, newObject];
-    console.log('Updated objects:', updatedObjects);
+    const currentObjects = tagObjects[selectedTag.Name] || [];
+    const updatedObjects = [...currentObjects, newText];
     
-    // 두 액션을 디스패치
-    //태그별 객체 상태 업데이트
-    dispatch(updateTagObjects({ 
-      tagName: selectedTag.Name, 
-      objects: updatedObjects 
-    }));
+    console.log('Adding text object:', newText);
+    console.log('Updated objects with text:', updatedObjects);
     
-    //템플릿 객체 상태 업데이트
-    dispatch(addTemplateObjects({ 
-      tagName: selectedTag.Name, 
-      objects: updatedObjects 
-    }));
-    
-    setSelectedObject(newObject);
-    setSelectedObjectIds([newObject.id]);
+    try {
+      // 태그별 객체 상태 업데이트
+      dispatch(updateTagObjects({ 
+        tagName: selectedTag.Name, 
+        objects: updatedObjects 
+      }));
+      
+      // 템플릿 객체 상태 업데이트
+      dispatch(addTemplateObjects({ 
+        tagName: selectedTag.Name, 
+        objects: updatedObjects 
+      }));
+      
+      setSelectedObject(newText);
+      setSelectedObjectIds([newText.id]);
+      console.log('Text added successfully');
+    } catch (error) {
+      console.error('Error adding text:', error);
+    }
   };
 
-  const handleAddText = () => {
-    if (!selectedTag) return;
+  const handleDeleteObjects = (objectIds: string[]) => {
+    console.log('Deleting objects with IDs:', objectIds);
+    
+    if (!selectedTag) {
+      console.warn('No tag selected, cannot delete objects');
+      return;
+    }
 
-    const newText = {
-      id: `text_${Date.now()}`,
-      type: 'text',
-      properties: {
-        x: 0,
-        y: 0,
-        text: 'Double click to edit',  // 변경된 기본 텍스트
-        fontSize: 20,
-        fontFamily: 'Arial',
-        fillColor: '#FFFFFF',
-        strokeColor: '#000000',
-        strokeWidth: 1,
-        rotation: 0,
-        width: 200,  // 텍스트 박스 기본 크기 증가
-        height: 30
-      }
-    };
-
-    const currentObjects = tagObjects[selectedTag.name] || [];
-    const updatedObjects = [...currentObjects, newText];
-    dispatch(addTemplateObjects({ tagName: selectedTag.name, objects: updatedObjects }));
-    setSelectedObject(newText);
-    setSelectedObjectIds([newText.id]);
+    const currentObjects = tagObjects[selectedTag.Name] || [];
+    const updatedObjects = currentObjects.filter(obj => !objectIds.includes(obj.id));
+    
+    console.log('Updated objects after deletion:', updatedObjects);
+    
+    try {
+      // 태그별 객체 상태 업데이트
+      dispatch(updateTagObjects({ 
+        tagName: selectedTag.Name, 
+        objects: updatedObjects 
+      }));
+      
+      // 템플릿 객체 상태 업데이트
+      dispatch(addTemplateObjects({ 
+        tagName: selectedTag.Name, 
+        objects: updatedObjects 
+      }));
+      
+      // 태그 객체 배열 업데이트 (상태 업데이트 강제를 위해)
+      setSelectedTag({
+        ...selectedTag,
+        Objects: updatedObjects
+      });
+      
+      setSelectedObject(null);
+      setSelectedObjectIds([]);
+      console.log('Objects deleted successfully');
+    } catch (error) {
+      console.error('Error deleting objects:', error);
+    }
   };
 
   const handleLogout = () => {
@@ -159,6 +283,13 @@ const Dashboard: React.FC = () => {
     exportTemplate(exportData);
   };
 
+  const handleLoadTemplate = async () => {
+    const templateData = await handleTemplateFileLoad();
+    if (templateData) {
+      console.log('Loaded template data:', templateData); // 디버깅용 로그 추가
+    }
+  };
+
   return (
     <ContextMenuProvider>
       <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -169,7 +300,7 @@ const Dashboard: React.FC = () => {
             onManageFonts={() => console.log('Fonts')}
             onManageImageCodes={() => console.log('Images')}
             onManageReservations={() => console.log('Reservations')}
-            onLoadTemplate={() => console.log('Load')}
+            onLoadTemplate={handleLoadTemplate} // handleLoadTemplate 연결
             onMergeTemplates={() => console.log('Merge')}
             onSaveTemplate={handleSaveTemplate}
             onExportBitmap={() => console.log('Export')}
@@ -182,17 +313,13 @@ const Dashboard: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - TagList */}
-          <div className="w-[250px] flex flex-col border-r border-gray-700">
-            <div className="p-1.5 border-b border-gray-700">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Tag size={20} />
-                Tag List
-              </h2>
-            </div>
+          <div className="w-[260px] flex flex-col border-r border-gray-700">
+
             <div className="flex-1 overflow-y-auto">
-              <TagList 
+              <Navbar 
                 onSelectTag={handleTagSelect} 
-                selectedTag={selectedTag?.name}
+                selectedTag={selectedTag?.Name}
+                onManageTags={handleManageTags} // 태그 관리 함수 연결
               />
             </div>
           </div>
@@ -205,23 +332,25 @@ const Dashboard: React.FC = () => {
                   width={selectedTag.Width}
                   height={selectedTag.Height}
                   tagName={selectedTag.Name}
-                  objects={tagObjects[selectedTag.Name] || []}
+                  objects={selectedTag.Objects || tagObjects[selectedTag.Name] || []}
                   onUpdateObjects={(updatedObjects) => {
-                    // 두 액션 모두 디스패치
+                    console.log('Updating objects:', updatedObjects);
+                    // Objects 업데이트시 Redux store와 selectedTag 모두 업데이트
                     dispatch(updateTagObjects({ 
                       tagName: selectedTag.Name, 
                       objects: updatedObjects 
                     }));
-                    dispatch(addTemplateObjects({ 
-                      tagName: selectedTag.Name, 
-                      objects: updatedObjects 
-                    }));
+                    setSelectedTag({
+                      ...selectedTag,
+                      Objects: updatedObjects
+                    });
                   }}
                   onObjectSelect={handleObjectSelect}
                   selectedObjectIds={selectedObjectIds}
                   setSelectedObjectIds={setSelectedObjectIds}
                   onAddShape={handleAddShape}
                   onAddText={handleAddText}
+                  onDeleteObjects={handleDeleteObjects}
                 />
               ) : (
                 <div className="text-gray-500">
@@ -271,6 +400,16 @@ const Dashboard: React.FC = () => {
         <ManageCSVPopup 
           isOpen={isCSVPopupOpen}
           onClose={() => setIsCSVPopupOpen(false)}
+        />
+        {/* 태그 관리 팝업 */}
+        <ManageTagsPopup
+          isOpen={isManageTagsPopupOpen}
+          onClose={() => setIsManageTagsPopupOpen(false)}
+          orientation={
+            selectedTag
+              ? (isPortrait(selectedTag.Model) ? 'vertical' : 'horizontal')
+              : 'horizontal'
+          }
         />
       </div>
     </ContextMenuProvider>
