@@ -1,13 +1,14 @@
 /* 전체 네비게이션 컨테이너 */
 .navbar-container {
-  width: 240px;
+  width: 320px; /* 기존 240px에서 넓힘 */
+  min-width: 320px;
   height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #2D3748;
   color: white;
   position: relative;
-  overflow: auto; /* visible에서 변경 - 스크롤 가능하면서 sticky 작동하도록 */
+  overflow: visible; /* visible로 변경하여 이중 스크롤 방지 */
 }
 
 /* 네비게이션 헤더 - 헤더 고정 - 중요! */
@@ -27,6 +28,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   min-height: 56px;
   width: 100%;
+  overflow: visible !important;
 }
 
 .navbar-header h2 {
@@ -63,12 +65,23 @@
   contain: content; /* strict에서 변경 - 더 나은 스크롤 동작 */
 }
 
+.navbar-scrollable-content::-webkit-scrollbar {
+  width: 5px;
+}
+.navbar-scrollable-content::-webkit-scrollbar-thumb {
+  background: #3b4252;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+.navbar-scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: #60a5fa;
+}
+
 /* TagList 관련 스타일 */
 .taglist-wrapper {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
 }
 
 /* 카테고리 래퍼 */
@@ -128,27 +141,111 @@
   background-color: #333f54;
   border-radius: 6px;
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 0.5rem;
 }
 
 /* 템플릿 아이템 */
 .template-item {
-  padding: 0.75rem;
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.85rem 1.1rem;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.18s, box-shadow 0.18s, border 0.18s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.5rem;
+  background: #3a4253;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1.5px solid transparent;
+  position: relative;
 }
 
-.template-selected {
-  background-color: #3182CE;
+.template-item:hover {
+  background: #475569;
+  border: 1.5px solid #60a5fa;
+  box-shadow: 0 2px 12px rgba(96,165,250,0.10);
 }
 
-.template-normal {
-  background-color: #475569;
+.template-item .toggle-icon {
+  transition: transform 0.18s;
+}
+.template-item .toggle-icon.open {
+  transform: rotate(90deg);
 }
 
-.template-normal:hover {
-  background-color: #4B5563;
+.template-item.parent {
+  background: linear-gradient(90deg, #334155 0%, #23272f 100%);
+  font-weight: 700;
+  border-left: 4px solid #60a5fa;
+  margin-bottom: 0.7rem;
+  box-shadow: 0 2px 8px rgba(96,165,250,0.04);
+}
+
+.template-item.child {
+  border-left: 3px solid #64748b;
+  background: #2d3340;
+  margin-left: 8px;
+  margin-bottom: 0.35rem;
+  position: relative;
+}
+.template-item.child::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 8px;
+  height: 2px;
+  background: #64748b;
+  border-radius: 1px;
+  transform: translateY(-50%);
+}
+
+.template-item:last-child {
+  margin-bottom: 0;
+}
+
+.template-item .font-bold {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 0%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+  font-weight: 600;
+  color: #e0e7ef;
+  letter-spacing: 0.01em;
+}
+
+.template-item .font-bold[title] {
+  cursor: help;
+}
+
+.template-item .text-xs {
+  color: #a0aec0;
+  margin-left: 0.75rem;
+  font-size: 0.92em;
+  font-weight: 400;
+}
+
+.template-item.template-selected {
+  background: linear-gradient(90deg, #2563eb 0%, #1e293b 100%);
+  border: 1.5px solid #60a5fa;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.08);
+}
+
+.template-item.template-normal:hover {
+  background: #475569;
+  border: 1.5px solid #64748b;
+  box-shadow: 0 2px 12px rgba(100,116,139,0.10);
 }
 
 /* 자식 템플릿 컨테이너 */
@@ -230,4 +327,17 @@
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #4A5568;
+}
+
+.direction-group-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #60a5fa;
+  margin: 0.3rem 0 0.2rem 0.5rem;
+  letter-spacing: 0.01em;
+}
+.direction-group {
+  margin-bottom: 0.5rem;
+  transition: max-height 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.18s;
+  overflow: hidden;
 }

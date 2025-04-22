@@ -52,3 +52,8 @@
   padding: 1rem;
   overflow-y: auto;
 }
+
+.loading-overlay {
+  /* 기존 스타일 */
+  z-index: 99999 !important;
+}

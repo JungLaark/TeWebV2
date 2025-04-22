@@ -18,6 +18,10 @@ interface CanvasProps {
   onAddShape: (type: string) => void;
   onAddText: () => void;
   onDeleteObjects: (objectIds: string[]) => void; // 객체 삭제 핸들러 추가
+  isDragging: boolean;
+  setIsDragging: (v: boolean) => void;
+  draggingObjects: {[key: string]: {x: number, y: number}};
+  setDraggingObjects: (v: {[key: string]: {x: number, y: number}}) => void;
 }
 
 const Canvas: React.FC<CanvasProps> = ({ 
@@ -30,14 +34,16 @@ const Canvas: React.FC<CanvasProps> = ({
   setSelectedObjectIds,
   onAddShape,
   onAddText,
-  onDeleteObjects
+  onDeleteObjects,
+  isDragging,
+  setIsDragging,
+  draggingObjects,
+  setDraggingObjects
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [scale, setScale] = useState(1);
-  const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [selectedObjectsInitialPos, setSelectedObjectsInitialPos] = useState<{[key: string]: {x: number, y: number}}>({});
-  const [draggingObjects, setDraggingObjects] = useState<{[key: string]: {x: number, y: number}}>({});
 
   // width, height 변경 시 실제 canvas DOM 속성 동기화
   useEffect(() => {
@@ -65,8 +71,8 @@ const Canvas: React.FC<CanvasProps> = ({
 
   // 객체의 고유 식별자 생성 함수
   const getObjectId = (obj: TObject): string => {
-    // 객체의 고유 ID 사용 (이미 TObject 인터페이스에 id 속성이 존재함)
-    return obj.id;
+    // 객체의 고유 ID 사용 (이미 TObject 인터페이스에 id 속성이 존재함) -> id로 하니 undefined 에러 발생
+    return obj.ZOrder.toString();
   };
 
   // 객체가 클릭된 위치에 있는지 확인하는 함수
@@ -130,6 +136,9 @@ const Canvas: React.FC<CanvasProps> = ({
         // Ctrl 키를 누른 상태에서 다중 선택
         if (e.ctrlKey) {
           // 이미 선택된 객체를 다시 클릭한 경우 선택 해제 (토글)
+
+          console.log('[selectedObjectIds]: ', selectedObjectIds);
+
           if (selectedObjectIds.includes(objId)) {
             const newSelectedIds = selectedObjectIds.filter(id => id !== objId);
             setSelectedObjectIds(newSelectedIds);
@@ -1177,12 +1186,28 @@ const Canvas: React.FC<CanvasProps> = ({
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (!ctx || !canvas) return;
-  
-      await renderCanvas(ctx, canvas, objects);
+
+      // 드래그 중이면 draggingObjects에 포함된 객체만 좌표를 변경, 나머지는 원본 객체 그대로 사용
+      let objectsToRender = objects;
+      if (isDragging && Object.keys(draggingObjects).length > 0) {
+        objectsToRender = objects.map(obj => {
+          const key = String(obj.ZOrder);
+          if (draggingObjects[key]) {
+            return {
+              ...obj,
+              PosX: draggingObjects[key].x,
+              PosY: draggingObjects[key].y
+            };
+          }
+          return obj; // draggingObjects에 없는 객체는 원본 그대로 반환
+        });
+      }
+
+      await renderCanvas(ctx, canvas, objectsToRender);
     };
-  
+
     renderAndUpdate();
-  }, [objects, width, height, scale, selectedObjectIds, draggingObjects]);
+  }, [objects, width, height, scale, selectedObjectIds, draggingObjects, isDragging, renderCanvas]);
 
   // 휠 이벤트 리스너
   useEffect(() => {
@@ -1242,13 +1267,17 @@ const Canvas: React.FC<CanvasProps> = ({
   }, [handleMouseMove, handleMouseUp]);
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-gray-800">
-      <div className="canvas-container">
+    <div className="flex-1 flex items-center justify-center" style={{ background: 'transparent', margin: 0, padding: 0, border: 'none' }}>
+      <div className="canvas-container" style={{ width: '100%', height: '100%', background: 'transparent', margin: 0, padding: 0, border: 'none' }}>
         <canvas
           ref={canvasRef}
           style={{
             width: `${width}px`,
             height: `${height}px`,
+            background: 'transparent',
+            margin: 0,
+            padding: 0,
+            border: 'none',
             transform: `scale(${scale})`,
             transformOrigin: 'center',
             imageRendering: 'pixelated',
@@ -1256,7 +1285,7 @@ const Canvas: React.FC<CanvasProps> = ({
             cursor: isDragging ? 'grabbing' : 'pointer',
             willChange: 'transform'  // 성능 최적화를 위한 속성 추가
           }}
-          className="border border-gray-300 shadow-lg"
+          className="border-0 shadow-none"
         />
       </div>
     </div>

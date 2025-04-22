@@ -20,6 +20,7 @@ import { Navbar } from '../../components/Navbar';
 import { isPortrait } from '../../utils/orientationUtils';
 import { OrientationType } from '../../types';
 import { fetchTemplateData } from '../../api/services/template';
+import LoadingOverlay from '../../components/Popup/CommonPopup/LoadingOverlay';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -29,10 +30,13 @@ const Dashboard: React.FC = () => {
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
   const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
   const [isManageTagsPopupOpen, setIsManageTagsPopupOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggingObjects, setDraggingObjects] = useState<{[key: string]: {x: number, y: number}}>({});
 
   const csvMatches = useSelector((state: RootState) => state.template.Matches);
   const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
   const templateState = useSelector((state: RootState) => state.template);
+  const isLoading = useSelector((state: RootState) => state.template.isLoading);
 
   useEffect(() => {
     const loadTemplates = async () => {
@@ -313,6 +317,34 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // PropertyPanel에 넘길 객체를 드래그 중이면 draggingObjects의 좌표로 가공
+  const getPanelObject = () => {
+    if (!selectedObject) return null;
+    if (isDragging && draggingObjects && selectedObject.id && draggingObjects[selectedObject.id]) {
+      return {
+        ...selectedObject,
+        PosX: draggingObjects[selectedObject.id].x,
+        PosY: draggingObjects[selectedObject.id].y
+      };
+    }
+    return selectedObject;
+  };
+
+  // 드래그 중 selectedObject의 좌표를 실시간으로 갱신
+  useEffect(() => {
+    if (
+      isDragging &&
+      selectedObject &&
+      draggingObjects[selectedObject.ZOrder]
+    ) {
+      setSelectedObject({
+        ...selectedObject,
+        PosX: draggingObjects[selectedObject.ZOrder].x,
+        PosY: draggingObjects[selectedObject.ZOrder].y,
+      });
+    }
+  }, [isDragging, draggingObjects, selectedObject]);
+
   return (
     <ContextMenuProvider>
       <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -336,8 +368,7 @@ const Dashboard: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - TagList */}
-          <div className="w-[260px] flex flex-col border-r border-gray-700">
-
+          <div className="w-[340px] flex flex-col border-r border-gray-700">
             <div className="flex-1 overflow-y-auto">
               <Navbar 
                 onSelectTag={handleTagSelect} 
@@ -374,6 +405,10 @@ const Dashboard: React.FC = () => {
                   onAddShape={handleAddShape}
                   onAddText={handleAddText}
                   onDeleteObjects={handleDeleteObjects}
+                  isDragging={isDragging}
+                  setIsDragging={setIsDragging}
+                  draggingObjects={draggingObjects}
+                  setDraggingObjects={setDraggingObjects}
                 />
               ) : (
                 <div className="text-gray-500">
@@ -384,9 +419,9 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Right Sidebar - PropertyPanel */}
-          <div className="w-[250px] border-l border-gray-700">
+          <div className="w-[340px] border-l border-gray-700">
             <PropertyPanel
-              selectedObject={selectedObject}
+              selectedObject={getPanelObject()}
               selectedTagName={selectedTag?.Name}  // Name으로 수정
               onUpdateObject={(updatedObject) => {
                 if (!selectedTag) return;
@@ -434,6 +469,7 @@ const Dashboard: React.FC = () => {
               : 'horizontal'
           }
         />
+        <LoadingOverlay isOpen={isLoading} />
       </div>
     </ContextMenuProvider>
   );

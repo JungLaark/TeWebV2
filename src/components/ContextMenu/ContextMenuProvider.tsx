@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import ContextMenu from './index';
 
 interface ContextMenuState {
@@ -42,6 +42,8 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
     y: 0,
   });
 
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
   const showContextMenu = useCallback((x: number, y: number, actions: ContextMenuState['actions']) => {
     setMenuState({
       visible: true,
@@ -55,16 +57,44 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setMenuState(prev => ({ ...prev, visible: false }));
   }, []);
 
+  useEffect(() => {
+    if (menuState.visible && menuRef.current) {
+      menuRef.current.style.opacity = '1';
+      menuRef.current.style.pointerEvents = 'auto';
+    } else if (menuRef.current) {
+      menuRef.current.style.opacity = '0';
+      menuRef.current.style.pointerEvents = 'none';
+    }
+  }, [menuState.visible]);
+
   return (
     <ContextMenuContext.Provider value={{ showContextMenu, hideContextMenu }}>
       {children}
       {menuState.visible && (
-        <ContextMenu
-          x={menuState.x}
-          y={menuState.y}
-          onClose={hideContextMenu}
-          actions={menuState.actions}
-        />
+        <div
+          ref={menuRef}
+          className={`context-menu-popup${menuState.visible ? ' show' : ''}`}
+          style={{
+            position: 'fixed',
+            top: menuState.y,
+            left: menuState.x,
+            zIndex: 9999,
+            minWidth: 180,
+            background: '#23272f',
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            opacity: menuState.visible ? 1 : 0,
+            pointerEvents: menuState.visible ? 'auto' : 'none',
+            transition: 'opacity 0.18s cubic-bezier(0.4,0,0.2,1)',
+          }}
+        >
+          <ContextMenu
+            x={menuState.x}
+            y={menuState.y}
+            onClose={hideContextMenu}
+            actions={menuState.actions}
+          />
+        </div>
       )}
     </ContextMenuContext.Provider>
   );
