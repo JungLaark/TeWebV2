@@ -10,7 +10,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isOpen, message }) => {
   if (!isOpen) return null;
   return (
     <div className="popup-overlay">
-      <div className="popup-content">
+      <div className="loading-popup-content">
         <div className="loader" />
         <div className="mt-2 text-white text-lg font-semibold">{message || '로딩 중입니다...'}</div>
       </div>
