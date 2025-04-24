@@ -146,6 +146,19 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions }) => 
               <span>{isPortrait(actions.modelType || ModelType.M21) ? 'Portrait' : 'Landscape'}</span>
             </div>
           )}
+          <button
+            className="context-menu-settings-btn"
+            onClick={() => {
+              if (typeof window !== 'undefined' && (window as any).openTagPropertyModal) {
+                (window as any).openTagPropertyModal();
+              }
+              onClose();
+            }}
+            title="태그 속성 설정"
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#60a5fa', fontSize: 18, cursor: 'pointer' }}
+          >
+            ⚙️ 설정
+          </button>
         </div>
       )}
       {menuItems.map((item, index) => (

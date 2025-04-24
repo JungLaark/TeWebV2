@@ -45,6 +45,9 @@ const Canvas: React.FC<CanvasProps> = ({
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [selectedObjectsInitialPos, setSelectedObjectsInitialPos] = useState<{[key: string]: {x: number, y: number}}>({});
 
+  // 리사이즈 핸들 상태 관리
+  const [resizeHandle, setResizeHandle] = useState<null | { objId: string, handlePos: string, startX: number, startY: number, orig: TObject }>(null);
+
   // width, height 변경 시 실제 canvas DOM 속성 동기화
   useEffect(() => {
     if (canvasRef.current) {
@@ -71,8 +74,8 @@ const Canvas: React.FC<CanvasProps> = ({
 
   // 객체의 고유 식별자 생성 함수
   const getObjectId = (obj: TObject): string => {
-    // 객체의 고유 ID 사용 (이미 TObject 인터페이스에 id 속성이 존재함) -> id로 하니 undefined 에러 발생
-    return obj.ZOrder.toString();
+    // id가 없으므로 ZOrder를 id로 사용
+    return String(obj.ZOrder);
   };
 
   // 객체가 클릭된 위치에 있는지 확인하는 함수
@@ -113,11 +116,44 @@ const Canvas: React.FC<CanvasProps> = ({
     };
   };
 
+  // 리사이즈 핸들 hit test 함수
+  const getHandleAtPosition = (obj: TObject, x: number, y: number) => {
+    const handleSize = 8;
+    const handles = [
+      { x: obj.PosX, y: obj.PosY, pos: 'tl' },
+      { x: obj.PosX + obj.Width, y: obj.PosY, pos: 'tr' },
+      { x: obj.PosX, y: obj.PosY + obj.Height, pos: 'bl' },
+      { x: obj.PosX + obj.Width, y: obj.PosY + obj.Height, pos: 'br' },
+      { x: obj.PosX + obj.Width/2, y: obj.PosY, pos: 'tm' },
+      { x: obj.PosX + obj.Width/2, y: obj.PosY + obj.Height, pos: 'bm' },
+      { x: obj.PosX, y: obj.PosY + obj.Height/2, pos: 'ml' },
+      { x: obj.PosX + obj.Width, y: obj.PosY + obj.Height/2, pos: 'mr' },
+    ];
+    for (const h of handles) {
+      if (x >= h.x - handleSize/2 && x <= h.x + handleSize/2 && y >= h.y - handleSize/2 && y <= h.y + handleSize/2) {
+        return h.pos;
+      }
+    }
+    return null;
+  };
+
   // 마우스 다운 핸들러 수정
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoordinates(e);
     console.log('Mouse down at coords:', coords);
     
+    // 선택된 객체가 있을 때 리사이즈 핸들 클릭 여부 우선 체크
+    if (selectedObjectIds.length === 1) {
+      const obj = objects.find(o => getObjectId(o) === selectedObjectIds[0]);
+      if (obj) {
+        const handlePos = getHandleAtPosition(obj, coords.x, coords.y);
+        if (handlePos) {
+          setResizeHandle({ objId: getObjectId(obj), handlePos, startX: coords.x, startY: coords.y, orig: { ...obj } });
+          return;
+        }
+      }
+    }
+
     // 클릭한 위치의 객체 찾기 (ZOrder가 높은 것부터 검사)
     const sortedObjects = [...objects].sort((a, b) => b.ZOrder - a.ZOrder);
     let objectFound = false;
@@ -194,11 +230,61 @@ const Canvas: React.FC<CanvasProps> = ({
   
   // 마우스 이동 핸들러 최적화
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoordinates(e);
+    if (resizeHandle) {
+      const { objId, handlePos, startX, startY, orig } = resizeHandle;
+      const dx = coords.x - startX;
+      const dy = coords.y - startY;
+      let newObj = { ...orig };
+      // 각 핸들 위치별로 width/height/pos 조정
+      switch (handlePos) {
+        case 'tl':
+          newObj.PosX = orig.PosX + dx;
+          newObj.PosY = orig.PosY + dy;
+          newObj.Width = orig.Width - dx;
+          newObj.Height = orig.Height - dy;
+          break;
+        case 'tr':
+          newObj.PosY = orig.PosY + dy;
+          newObj.Width = orig.Width + dx;
+          newObj.Height = orig.Height - dy;
+          break;
+        case 'bl':
+          newObj.PosX = orig.PosX + dx;
+          newObj.Width = orig.Width - dx;
+          newObj.Height = orig.Height + dy;
+          break;
+        case 'br':
+          newObj.Width = orig.Width + dx;
+          newObj.Height = orig.Height + dy;
+          break;
+        case 'tm':
+          newObj.PosY = orig.PosY + dy;
+          newObj.Height = orig.Height - dy;
+          break;
+        case 'bm':
+          newObj.Height = orig.Height + dy;
+          break;
+        case 'ml':
+          newObj.PosX = orig.PosX + dx;
+          newObj.Width = orig.Width - dx;
+          break;
+        case 'mr':
+          newObj.Width = orig.Width + dx;
+          break;
+      }
+      // 최소 크기 제한
+      newObj.Width = Math.max(10, newObj.Width);
+      newObj.Height = Math.max(10, newObj.Height);
+      // 객체 업데이트
+      onUpdateObjects(objects.map(o => getObjectId(o) === objId ? newObj : o));
+      return;
+    }
+
     if (!isDragging || selectedObjectIds.length === 0) return;
 
     e.preventDefault();
 
-    const coords = getCanvasCoordinates(e);
     const dx = coords.x - dragStartPos.x;
     const dy = coords.y - dragStartPos.y;
 
@@ -249,10 +335,15 @@ const Canvas: React.FC<CanvasProps> = ({
       // 렌더링
       renderCanvas(ctx, canvas, draggedObjects);
     });
-  }, [isDragging, selectedObjectIds, dragStartPos, selectedObjectsInitialPos, objects]);
+  }, [isDragging, selectedObjectIds, dragStartPos, selectedObjectsInitialPos, objects, resizeHandle, onUpdateObjects]);
 
   // 마우스 업 핸들러 수정
   const handleMouseUp = () => {
+    if (resizeHandle) {
+      setResizeHandle(null);
+      return;
+    }
+
     if (isDragging && Object.keys(draggingObjects).length > 0) {
       const updatedObjects = objects.map(obj => {
         const draggingPos = draggingObjects[getObjectId(obj)];
@@ -335,6 +426,9 @@ const Canvas: React.FC<CanvasProps> = ({
 
   // 객체 그리기 함수 통합 (먼저 선언)
   const drawObject = useCallback(async (ctx: CanvasRenderingContext2D, obj: TObject) => {
+
+    //console.log('도형 추가:', { id: obj.ZOrder, Type: obj.Type, ZOrder: obj.ZOrder, PosX: obj.PosX, PosY: obj.PosY });
+
     const typeLoweCase = obj.Type.toLowerCase();
     
     switch (typeLoweCase) {
@@ -391,6 +485,29 @@ const Canvas: React.FC<CanvasProps> = ({
         obj.Height + 10
       );
       ctx.setLineDash([]);
+
+      // 리사이즈 핸들 8개 그리기 (모서리 4개 + 변 4개)
+      const handleSize = 8;
+      const handles = [
+        // 4 모서리
+        { x: obj.PosX - handleSize/2, y: obj.PosY - handleSize/2, cursor: 'nwse-resize', pos: 'tl' },
+        { x: obj.PosX + obj.Width - handleSize/2, y: obj.PosY - handleSize/2, cursor: 'nesw-resize', pos: 'tr' },
+        { x: obj.PosX - handleSize/2, y: obj.PosY + obj.Height - handleSize/2, cursor: 'nesw-resize', pos: 'bl' },
+        { x: obj.PosX + obj.Width - handleSize/2, y: obj.PosY + obj.Height - handleSize/2, cursor: 'nwse-resize', pos: 'br' },
+        // 4 변
+        { x: obj.PosX + obj.Width/2 - handleSize/2, y: obj.PosY - handleSize/2, cursor: 'ns-resize', pos: 'tm' },
+        { x: obj.PosX + obj.Width/2 - handleSize/2, y: obj.PosY + obj.Height - handleSize/2, cursor: 'ns-resize', pos: 'bm' },
+        { x: obj.PosX - handleSize/2, y: obj.PosY + obj.Height/2 - handleSize/2, cursor: 'ew-resize', pos: 'ml' },
+        { x: obj.PosX + obj.Width - handleSize/2, y: obj.PosY + obj.Height/2 - handleSize/2, cursor: 'ew-resize', pos: 'mr' },
+      ];
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#0066ff';
+      handles.forEach(h => {
+        ctx.beginPath();
+        ctx.rect(h.x, h.y, handleSize, handleSize);
+        ctx.fill();
+        ctx.stroke();
+      });
       ctx.restore();
     }
   };
@@ -590,7 +707,7 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   const drawText = (ctx: CanvasRenderingContext2D, obj: TObject) => {
-    console.log('Drawing text object:', obj);
+    //console.log('Drawing text object:', obj);
     ctx.save();
     
     // 회전 적용
@@ -606,7 +723,7 @@ const Canvas: React.FC<CanvasProps> = ({
     try {
       const { size, family } = extractFontInfo(obj.Font);
       ctx.font = `${size}px ${family}`;
-      console.log('Applied font:', ctx.font, 'from:', obj.Font);
+      //console.log('Applied font:', ctx.font, 'from:', obj.Font);
     } catch(e) {
       console.warn('Font parsing error:', e);
       ctx.font = '16px Arial';
@@ -676,12 +793,6 @@ const Canvas: React.FC<CanvasProps> = ({
       }
 
       ctx.save();
-
-      // 디버깅용 로그 추가
-      console.log('[drawImage] obj:', obj);
-      console.log('[drawImage] obj.Width:', obj.Width, 'obj.Height:', obj.Height);
-      console.log('[drawImage] img:', img);
-      console.log('[drawImage] img.width:', img?.width, 'img.height:', img?.height);
 
       // 회전 처리
       if (obj.Rotation) {

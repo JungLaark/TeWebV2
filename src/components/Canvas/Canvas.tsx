@@ -26,8 +26,45 @@ const Canvas: React.FC<CanvasProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [selectionBox, setSelectionBox] = useState<{ start: { x: number, y: number } | null, end: { x: number, y: number } | null }>({ start: null, end: null });
+  const isPanning = useRef(false);
+  const start = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
-  // ...existing code...
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' && selectedObjectIds.length > 0) {
+        const remaining = objects.filter(obj => !selectedObjectIds.includes(String(obj.ZOrder)));
+        onUpdateObjects(remaining);
+        setSelectedObjectIds([]);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [objects, selectedObjectIds, onUpdateObjects, setSelectedObjectIds]);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    isPanning.current = true;
+    start.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: containerRef.current?.scrollLeft ?? 0,
+      scrollTop: containerRef.current?.scrollTop ?? 0,
+    };
+    document.body.style.cursor = 'grab';
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning.current || !containerRef.current) return;
+    const dx = e.clientX - start.current.x;
+    const dy = e.clientY - start.current.y;
+    containerRef.current.scrollLeft = start.current.scrollLeft - dx;
+    containerRef.current.scrollTop = start.current.scrollTop - dy;
+  };
+
+  const onMouseUp = () => {
+    isPanning.current = false;
+    document.body.style.cursor = '';
+  };
 
   return (
     <div 
@@ -39,13 +76,13 @@ const Canvas: React.FC<CanvasProps> = ({
         maxWidth: '100%',
         maxHeight: '100%'
       }}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
     >
       <div 
         className="canvas-wrapper"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
       >
         <canvas
           ref={canvasRef}

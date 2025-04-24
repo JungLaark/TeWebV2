@@ -20,6 +20,11 @@ const tagObjectsSlice = createSlice({
       action: PayloadAction<{ tagName: string; objects: TObject[] }>
     ) => {
       const { tagName, objects } = action.payload;
+      // tagName이 유니크 키(getTagKey) 형식이 아닐 경우 경고 로그
+      if (!tagName.includes('__')) {
+        console.warn('[tagObjectsSlice] tagName이 유니크 키 형식이 아님:', tagName);
+      }
+      console.log('[tagObjectsSlice] : ', tagName, objects);
       state.tagObjects[tagName] = objects;
     },
     removeTagObjects: (state, action: PayloadAction<string>) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Tag } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -21,6 +21,8 @@ import { isPortrait } from '../../utils/orientationUtils';
 import { OrientationType } from '../../types';
 import { fetchTemplateData } from '../../api/services/template';
 import LoadingOverlay from '../../components/Popup/CommonPopup/LoadingOverlay';
+import TagPropertyPanel from '../../components/PropertyPanel/TagPropertyPanel';
+import TagPropertyModal from '../../components/PropertyPanel/TagPropertyModal';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +34,9 @@ const Dashboard: React.FC = () => {
   const [isManageTagsPopupOpen, setIsManageTagsPopupOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [draggingObjects, setDraggingObjects] = useState<{[key: string]: {x: number, y: number}}>({});
+  const [isTagPropertyModalOpen, setIsTagPropertyModalOpen] = useState(false);
+  const currentObjectsRef = useRef<TObject[]>([]);
+  const [currentObjects, setCurrentObjects] = useState<TObject[]>([]);
 
   const csvMatches = useSelector((state: RootState) => state.template.Matches);
   const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
@@ -60,18 +65,58 @@ const Dashboard: React.FC = () => {
     loadTemplates();
   }, [dispatch]);
 
+  useEffect(() => {
+    (window as any).openTagPropertyModal = handleOpenTagPropertyModal;
+    return () => {
+      (window as any).openTagPropertyModal = undefined;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) {
+      document.body.classList.add('loading-overlay-active');
+    } else {
+      document.body.classList.remove('loading-overlay-active');
+    }
+    return () => {
+      document.body.classList.remove('loading-overlay-active');
+    };
+  }, [isLoading]);
+
+  useEffect(() => {
+    currentObjectsRef.current = currentObjects;
+  }, [currentObjects]);
+
+  // selectedTag가 바뀔 때마다 currentObjects를 동기화
+  useEffect(() => {
+    if (selectedTag) {
+      setCurrentObjects(
+        (tagObjects[getTagKey(selectedTag)] && [...tagObjects[getTagKey(selectedTag)]]) ||
+        (selectedTag.Objects && [...selectedTag.Objects]) ||
+        []
+      );
+    }
+  }, [selectedTag]);
+
+  // 태그의 유니크 키 생성 함수
+  const getTagKey = (tag: TLayout) => `${tag.Guid}__${tag.Name}`;
+
   const handleTagSelect = (tag: TLayout) => {
-    console.log('handleTagSelect called with:', tag);
-    setSelectedTag(tag);
-    setSelectedObject(null);
-    setSelectedObjectIds([]); // 태그 변경 시 선택 초기화
-    // tag.Objects가 존재하고, 1개 이상일 때만 store에 반영
-    if (tag.Objects && tag.Objects.length > 0) {
+    if (selectedTag) {
       dispatch(updateTagObjects({
-        tagName: tag.Name,
-        objects: tag.Objects
+        tagName: getTagKey(selectedTag),
+        objects: currentObjectsRef.current // 항상 최신값!
       }));
     }
+    setSelectedTag(tag);
+    setSelectedObject(null);
+    setSelectedObjectIds([]);
+    // 항상 새로운 배열로 초기화하여 참조 꼬임 방지
+    setCurrentObjects(
+      (tagObjects[getTagKey(tag)] && [...tagObjects[getTagKey(tag)]]) ||
+      (tag.Objects && [...tag.Objects]) ||
+      []
+    );
   };
 
   const handleManageTags = () => {
@@ -82,34 +127,20 @@ const Dashboard: React.FC = () => {
     setSelectedObject(object);
   };
 
+  // 객체의 고유 식별자: id가 있으면 id, 없으면 ZOrder(string)
+  const getObjectId = (obj: TObject) => (String(obj.ZOrder));
+
   const handleAddShape = (type: string) => {
-    console.log('handleAddShape called with type:', type);
-    console.log('selectedTag:', selectedTag);
-    
-    if (!selectedTag) {
-      console.warn('No tag selected, cannot add shape');
-      return;
-    }
-
-    // ShowBoarder를 true로 설정하여 도형이 잘 보이도록 수정
-    // 중앙 위치 계산
-    const centerX = (selectedTag.Width - 100) / 2;
-    const centerY = (selectedTag.Height - 100) / 2;
-
-    console.log('Selected tag:', selectedTag);
-    const currentObjects = tagObjects[selectedTag.Name] || [];
-    console.log('Current tag objects:', currentObjects);
-
+    if (!selectedTag) return;
     const newObject: TObject = {
-      id: `${type}_${Date.now()}`,
-      Type: type,
-      ZOrder: 0,
-      PenWidth: 2, // 선 두께 증가
+      Type: type.toLowerCase(),
+      ZOrder: currentObjects.length,
+      PenWidth: 2,
       PenColor: "Black",
       FillColor: "White",
       IsFilled: false,
-      PosX: centerX,
-      PosY: centerY,
+      PosX: (selectedTag.Width - 100) / 2,
+      PosY: (selectedTag.Height - 100) / 2,
       PosX1: 0,
       PosY1: 0,
       Height: 100,
@@ -121,7 +152,7 @@ const Dashboard: React.FC = () => {
       VAlign: 1,
       DataName: null,
       ShowBarcodeLabel: false,
-      ShowBoarder: true, // 테두리 표시 활성화
+      ShowBoarder: true,
       ArcsWidth: 20,
       Margin: 0,
       Arrow: 0,
@@ -138,48 +169,20 @@ const Dashboard: React.FC = () => {
       LineHeight: 16,
       ImageBase64: null
     };
-
     const updatedObjects = [...currentObjects, newObject];
-    console.log('Updated objects:', updatedObjects);
-    
-    // 두 액션을 디스패치
-    try {
-      //태그별 객체 상태 업데이트
-      dispatch(updateTagObjects({ 
-        tagName: selectedTag.Name, 
-        objects: updatedObjects 
-      }));
-      
-      //템플릿 객체 상태 업데이트
-      dispatch(addTemplateObjects({ 
-        tagName: selectedTag.Name, 
-        objects: updatedObjects 
-      }));
-      
-      setSelectedObject(newObject);
-      setSelectedObjectIds([newObject.id]);
-      console.log('Shape added successfully:', newObject);
-    } catch (error) {
-      console.error('Error adding shape:', error);
-    }
+    setCurrentObjects(updatedObjects);
+    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+    setSelectedObject(newObject);
+    setSelectedObjectIds([String(newObject.ZOrder)]);
   };
 
   const handleAddText = () => {
-    console.log('handleAddText called');
-    
-    if (!selectedTag) {
-      console.warn('No tag selected, cannot add text');
-      return;
-    }
-
-    // 중앙 위치 계산
-    const centerX = (selectedTag.Width - 200) / 2;  // 텍스트 기본 너비의 절반을 빼서 중앙 정렬
-    const centerY = (selectedTag.Height - 30) / 2;  // 텍스트 기본 높이의 절반을 빼서 중앙 정렬
-
+    if (!selectedTag) return;
+    const centerX = (selectedTag.Width - 200) / 2;
+    const centerY = (selectedTag.Height - 30) / 2;
     const newText: TObject = {
-      id: `text_${Date.now()}`,
       Type: 'text',
-      ZOrder: 0,
+      ZOrder: currentObjects.length,
       PenWidth: 1,
       PenColor: "Black",
       FillColor: "White",
@@ -214,77 +217,26 @@ const Dashboard: React.FC = () => {
       LineHeight: 16,
       ImageBase64: null
     };
-
-    const currentObjects = tagObjects[selectedTag.Name] || [];
     const updatedObjects = [...currentObjects, newText];
-    
-    console.log('Adding text object:', newText);
-    console.log('Updated objects with text:', updatedObjects);
-    
-    try {
-      // 태그별 객체 상태 업데이트
-      dispatch(updateTagObjects({ 
-        tagName: selectedTag.Name, 
-        objects: updatedObjects 
-      }));
-      
-      // 템플릿 객체 상태 업데이트
-      dispatch(addTemplateObjects({ 
-        tagName: selectedTag.Name, 
-        objects: updatedObjects 
-      }));
-      
-      setSelectedObject(newText);
-      setSelectedObjectIds([newText.id]);
-      console.log('Text added successfully');
-    } catch (error) {
-      console.error('Error adding text:', error);
-    }
+    setCurrentObjects(updatedObjects);
+    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+    setSelectedObject(newText);
+    setSelectedObjectIds([String(newText.ZOrder)]);
   };
 
   const handleDeleteObjects = (objectIds: string[]) => {
-    console.log('Deleting objects with IDs:', objectIds);
-    
-    if (!selectedTag) {
-      console.warn('No tag selected, cannot delete objects');
-      return;
-    }
-
-    const currentObjects = tagObjects[selectedTag.Name] || [];
-    const updatedObjects = currentObjects.filter(obj => !objectIds.includes(obj.id));
-    
-    console.log('Updated objects after deletion:', updatedObjects);
-    
-    try {
-      // 태그별 객체 상태 업데이트
-      dispatch(updateTagObjects({ 
-        tagName: selectedTag.Name, 
-        objects: updatedObjects 
-      }));
-      
-      // 템플릿 객체 상태 업데이트
-      dispatch(addTemplateObjects({ 
-        tagName: selectedTag.Name, 
-        objects: updatedObjects 
-      }));
-      
-      // 태그 객체 배열 업데이트 (상태 업데이트 강제를 위해)
-      setSelectedTag({
-        ...selectedTag,
-        Objects: updatedObjects
-      });
-      
-      setSelectedObject(null);
-      setSelectedObjectIds([]);
-      console.log('Objects deleted successfully');
-    } catch (error) {
-      console.error('Error deleting objects:', error);
-    }
+    if (!selectedTag) return;
+    const updatedObjects = currentObjects.filter(obj => !objectIds.includes(String(obj.ZOrder)));
+    setCurrentObjects(updatedObjects);
+    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+    setSelectedObject(null);
+    setSelectedObjectIds([]);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
-    window.location.href = '/login';  // navigate 대신 location.href 사용
+    //window.location.href = '/login';  // navigate 대신 location.href 사용
+    navigate('/login');  // navigate 사용
   };
 
   const handleManageCSV = () => {
@@ -345,6 +297,30 @@ const Dashboard: React.FC = () => {
     }
   }, [isDragging, draggingObjects, selectedObject]);
 
+  // 태그 속성 패널에서 값 변경 시 처리
+  const handleUpdateTag = (updated: TLayout) => {
+    setSelectedTag(updated);
+    // 템플릿/스토어에도 반영
+    dispatch(setTemplates(
+      templateState.templates.map(t => t.Guid === updated.Guid ? updated : t)
+    ));
+  };
+
+  const handleOpenTagPropertyModal = () => {
+    setIsTagPropertyModalOpen(true);
+  };
+  const handleCloseTagPropertyModal = () => {
+    setIsTagPropertyModalOpen(false);
+  };
+
+  const handleAddSubTag = (parentTagName: string, newLayout: TLayout) => {
+    dispatch(setTemplates([...templateState.templates, newLayout]));
+    setSelectedTag(newLayout);
+    setSelectedObject(null);
+    setSelectedObjectIds([]);
+    dispatch(updateTagObjects({ tagName: getTagKey(newLayout), objects: [] }));
+  };
+
   return (
     <ContextMenuProvider>
       <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -374,11 +350,12 @@ const Dashboard: React.FC = () => {
                 onSelectTag={handleTagSelect} 
                 selectedTag={selectedTag?.Name}
                 onManageTags={handleManageTags} // 태그 관리 함수 연결
+                handleAddSubTag={handleAddSubTag} // 전달 (props로 내려주기)
               />
             </div>
           </div>
 
-          {/* Center - Canvas */}
+          {/* Right - Canvas */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 flex items-center justify-center">
               {selectedTag ? (
@@ -386,14 +363,10 @@ const Dashboard: React.FC = () => {
                   width={selectedTag.Width}
                   height={selectedTag.Height}
                   tagName={selectedTag.Name}
-                  objects={selectedTag.Objects || tagObjects[selectedTag.Name] || []}
+                  objects={currentObjects}
                   onUpdateObjects={(updatedObjects) => {
-                    console.log('Updating objects:', updatedObjects);
-                    // Objects 업데이트시 Redux store와 selectedTag 모두 업데이트
-                    dispatch(updateTagObjects({ 
-                      tagName: selectedTag.Name, 
-                      objects: updatedObjects 
-                    }));
+                    setCurrentObjects(updatedObjects);
+                    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
                     setSelectedTag({
                       ...selectedTag,
                       Objects: updatedObjects
@@ -411,35 +384,28 @@ const Dashboard: React.FC = () => {
                   setDraggingObjects={setDraggingObjects}
                 />
               ) : (
-                <div className="text-gray-500">
-                  Select a tag to start editing
-                </div>
+                <div className="text-gray-500">Select a tag to start editing</div>
               )}
             </div>
           </div>
-
-          {/* Right Sidebar - PropertyPanel */}
           <div className="w-[340px] border-l border-gray-700">
             <PropertyPanel
               selectedObject={getPanelObject()}
-              selectedTagName={selectedTag?.Name}  // Name으로 수정
+              selectedTagName={selectedTag?.Name}
               onUpdateObject={(updatedObject) => {
                 if (!selectedTag) return;
-                const currentObjects = tagObjects[selectedTag.Name] || [];  // Name으로 수정
-                const updatedObjects = currentObjects.map(obj => 
-                  obj.id === updatedObject.id ? updatedObject : obj
+                const currentObjects = tagObjects[getTagKey(selectedTag)] || [];
+                const updatedObjects = currentObjects.map(obj =>
+                  getObjectId(obj) === getObjectId(updatedObject) ? updatedObject : obj
                 );
-
-                // 두 액션 모두 디스패치
                 dispatch(updateTagObjects({ 
-                  tagName: selectedTag.Name, 
+                  tagName: getTagKey(selectedTag), 
                   objects: updatedObjects 
                 }));
                 dispatch(addTemplateObjects({ 
-                  tagName: selectedTag.Name, 
+                  tagName: getTagKey(selectedTag), 
                   objects: updatedObjects 
                 }));
-
                 setSelectedObject(updatedObject);
               }}
             />
@@ -470,6 +436,13 @@ const Dashboard: React.FC = () => {
           }
         />
         <LoadingOverlay isOpen={isLoading} />
+        {/* TagPropertyModal 팝업 추가 */}
+        <TagPropertyModal
+          open={isTagPropertyModalOpen}
+          selectedTag={selectedTag}
+          onUpdateTag={handleUpdateTag}
+          onClose={handleCloseTagPropertyModal}
+        />
       </div>
     </ContextMenuProvider>
   );

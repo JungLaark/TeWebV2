@@ -9,6 +9,7 @@ import { useContextMenu } from '../ContextMenu/ContextMenuProvider';
 interface TagListProps {
   onSelectTag: (tag: TLayout) => void;
   selectedTag?: string;
+  handleAddSubTag?: (parentTagName: string, newLayout: TLayout) => void;
 }
 
 // 트리 노드 타입 정의
@@ -67,7 +68,7 @@ function buildTemplateTree(templates: TLayout[]): TreeNode[] {
 
   // 3. Direction별 그룹핑 및 트리 구성
   Object.values(modelMap).forEach(modelNode => {
-    const modelTemplates = templates.filter(tpl => `${tpl.Model}` === modelNode.id);
+    // const modelTemplates = templates.filter(tpl => `${tpl.Model}` === modelNode.id); // 사용하지 않으므로 삭제
     // Direction별 guidMap 기반 트리
     const directionGroups: Record<number, TreeNode> = {
       0: { id: modelNode.id + '_landscape', name: '가로모드', children: [] },
@@ -77,7 +78,7 @@ function buildTemplateTree(templates: TLayout[]): TreeNode[] {
     Object.values(guidMap).forEach(group => {
       group.parents.forEach(parentTpl => {
         if (`${parentTpl.Model}` !== modelNode.id) return;
-        const dir = parentTpl.Direction === 1 ? 1 : 0;
+        const dir = parentTpl.Direction === 1 ? 1 : 0; // DirectionType이 number라면 문제 없음
         const parentNode: TreeNode = {
           id: parentTpl.Guid + '_' + parentTpl.Name,
           name: `${parentTpl.TType} (${parentTpl.Name})`,
@@ -108,35 +109,37 @@ function renderTree(
   selectedTag?: string,
   depth = 0,
   openMap: Record<string, boolean> = {},
-  toggleNode?: (id: string) => void
+  toggleNode?: (id: string) => void,
+  showContextMenu?: (x: number, y: number, actions: import('../ContextMenu/ContextMenuProvider').ContextMenuState['actions']) => void,
+  handleAddSubTag?: (parentTagName: string, newLayout: TLayout) => void
 ) {
-  const { showContextMenu } = useContextMenu();
   return nodes.map(node => {
     const isDirectionGroup = node.name === '세로모드' || node.name === '가로모드';
     if (isDirectionGroup) {
       return (
         <div key={node.id} className="direction-group">
           <div className="direction-group-title">{node.name}</div>
-          {node.children && renderTree(node.children, onSelectTag, selectedTag, depth + 1, openMap, toggleNode)}
+          {node.children && renderTree(node.children, onSelectTag, selectedTag, depth + 1, openMap, toggleNode, showContextMenu, handleAddSubTag)}
         </div>
       );
     }
     const isParent = node.children && node.children.length > 0;
     const isOpen = openMap[node.id] !== false; // 기본은 열림
     return (
-      <div key={node.id} style={{ paddingLeft: depth * 16 }}>
+      <div key={node.id} style={{ paddingLeft: depth === 0 ? 0 : 10 }}>
         <div
           className={`template-item ${isParent ? 'parent' : 'child'} ${selectedTag === node.data?.Name ? 'template-selected' : 'template-normal'}`}
-          onClick={() => node.data && onSelectTag(node.data)}
+          onClick={() => { if (node.data) onSelectTag(node.data); }}
           onContextMenu={e => {
             e.preventDefault();
-            if (node.data) {
+            if (node.data && showContextMenu) {
               showContextMenu(e.clientX, e.clientY, {
                 tagName: node.data.Name,
                 tagWidth: node.data.Width,
                 tagHeight: node.data.Height,
                 tagGuid: node.data.Guid,
-                modelType: node.data.Model
+                modelType: node.data.Model,
+                onAddSubTag: handleAddSubTag // 전달
               });
             }
           }}
@@ -144,7 +147,7 @@ function renderTree(
           {isParent && (
             <span
               style={{ cursor: 'pointer', marginRight: 4 }}
-              onClick={e => { e.stopPropagation(); toggleNode && toggleNode(node.id); }}
+              onClick={e => { e.stopPropagation(); if (toggleNode) toggleNode(node.id); }}
             >
               {isOpen ? '▼' : '▶'}
             </span>
@@ -157,14 +160,14 @@ function renderTree(
           )}
         </div>
         {isParent && isOpen && node.children && node.children.length > 0 &&
-          renderTree(node.children, onSelectTag, selectedTag, depth + 1, openMap, toggleNode)
+          renderTree(node.children, onSelectTag, selectedTag, depth + 1, openMap, toggleNode, showContextMenu, handleAddSubTag)
         }
       </div>
     );
   });
 }
 
-const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag }) => {
+const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, handleAddSubTag }) => {
   // 선택된 태그만 가져옴
   const selectedTags = useSelector((state: RootState) => state.selectedTags.selectedTags);
   // 전체 TLayout 목록 가져오기 (templateSlice의 templates)
@@ -182,6 +185,9 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag }) => {
   // 아코디언 상태 관리
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [allOpen, setAllOpen] = useState(true);
+
+  // ContextMenu Hook을 컴포넌트 최상위에서 호출
+  const { showContextMenu } = useContextMenu();
 
   // 부모 노드 토글
   const toggleNode = (id: string) => {
@@ -208,6 +214,7 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag }) => {
     setAllOpen(nextOpen);
   };
 
+  // renderTree에 showContextMenu를 전달
   return (
     <div className="taglist-wrapper">
       <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '4px 0 8px 0' }}>
@@ -218,7 +225,7 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag }) => {
       {tree.length === 0 ? (
         <div className="text-gray-400 text-sm p-4">템플릿이 없습니다.</div>
       ) : (
-        renderTree(tree, onSelectTag, selectedTag, 0, openMap, toggleNode)
+        renderTree(tree, onSelectTag, selectedTag, 0, openMap, toggleNode, showContextMenu, handleAddSubTag)
       )}
     </div>
   );

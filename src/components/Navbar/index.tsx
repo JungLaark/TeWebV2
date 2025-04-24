@@ -8,9 +8,10 @@ interface NavbarProps {
   onSelectTag: (tag: TLayout) => void;
   selectedTag?: string;
   onManageTags: () => void;
+  handleAddSubTag?: (parentTagName: string, newLayout: TLayout) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onSelectTag, selectedTag, onManageTags }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onSelectTag, selectedTag, onManageTags, handleAddSubTag }) => {
   return (
     <aside className="navbar-container">
       {/* 고정된 헤더 영역 */}
@@ -32,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectTag, selectedTag, onMana
         <TagList 
           onSelectTag={onSelectTag}
           selectedTag={selectedTag}
+          handleAddSubTag={handleAddSubTag}
         />
       </div>
     </aside>

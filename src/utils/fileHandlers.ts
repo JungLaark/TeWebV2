@@ -31,14 +31,17 @@ export const handleTemplateFileLoad = async (): Promise<TLayout | null> => {
       // TLayout 객체만 필터링 (Name, Guid, Objects 필드가 있는 것만)
       const tLayouts = templateData.Templates.filter(
         t => t.Name && t.Guid && Array.isArray(t.Objects)
-      );
+      ).map(t => ({
+        ...t,
+        Objects: t.Objects ? [...t.Objects] : [] // 깊은 복사(1차원)
+      }));
       console.log('Filtered TLayout templates:', tLayouts);
       store.dispatch(setTemplates(tLayouts));
     }
     // 단일 템플릿인 경우 처리
     else if (templateData.Name && templateData.Model) {
       console.log('Found single template:', templateData);
-      store.dispatch(setTemplates([templateData]));
+      store.dispatch(setTemplates([{ ...templateData, Objects: templateData.Objects ? [...templateData.Objects] : [] }]));
     }
     // 기타 구조인 경우 더 자세한 로깅
     else {
