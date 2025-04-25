@@ -62,7 +62,10 @@ const selectedTagsSlice = createSlice({
     resetSelectedTags: (state) => {
       state.selectedTags = state.availableTags;
       saveSelectedTagsToStorage(state.selectedTags);
-    }
+    },
+    setAvailableTags: (state, action: PayloadAction<Tag[]>) => {
+      state.availableTags = action.payload;
+    },
   }
 });
 
@@ -71,7 +74,8 @@ export const {
   addSelectedTag,
   removeSelectedTag,
   toggleSelectedTag,
-  resetSelectedTags
+  resetSelectedTags,
+  setAvailableTags // 추가
 } = selectedTagsSlice.actions;
 
 export default selectedTagsSlice.reducer;

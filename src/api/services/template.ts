@@ -19,4 +19,19 @@ export const fetchTemplateData = async (data = {}) => {
   return response.data;
 };
 
-// 템플릿 관련 API
+// 템플릿을 Core/ESN 서버로 전송하는 함수
+export const exportTemplateData = async (data: any) => {
+  const token = localStorage.getItem('token');
+  const basicAuth = 'Basic ' + btoa('esl:esl');
+  const response = await httpClient.post(
+    ENDPOINTS.V2.EXPORT_TE_DATA, // 실제 export 엔드포인트 사용
+    data,
+    {
+      headers: {
+        Authorization: basicAuth,
+        token: token
+      }
+    }
+  );
+  return response.data;
+};

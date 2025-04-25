@@ -23,6 +23,9 @@ import { fetchTemplateData } from '../../api/services/template';
 import LoadingOverlay from '../../components/Popup/CommonPopup/LoadingOverlay';
 import TagPropertyPanel from '../../components/PropertyPanel/TagPropertyPanel';
 import TagPropertyModal from '../../components/PropertyPanel/TagPropertyModal';
+import { exportTemplateData } from '../../api/services/template';
+import { setAvailableTags, setSelectedTags } from '../../store/features/selectedTagsSlice';
+import { setBasicMatches } from '../../store/features/templateSlice';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -43,6 +46,9 @@ const Dashboard: React.FC = () => {
   const templateState = useSelector((state: RootState) => state.template);
   const isLoading = useSelector((state: RootState) => state.template.isLoading);
 
+  const [alertMessage, setAlertMessage] = useState('');
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+
   useEffect(() => {
     const loadTemplates = async () => {
       try {
@@ -56,12 +62,42 @@ const Dashboard: React.FC = () => {
 
         dispatch(setTemplates(templates));
         dispatch(setBasicMatches(matches));
-        dispatch(setLoading(false));
+
+        // tagObjectsSlice도 동기화
+        templates.forEach(t => {
+          dispatch(updateTagObjects({
+            tagName: `${t.Guid}__${t.Name}`,
+            objects: t.Objects || []
+          }));
+        });
+
+        if (templates.length > 0) {
+          setSelectedTag(templates[0]);
+          setCurrentObjects(templates[0].Objects || []);
+          setSelectedObject(null);
+          setSelectedObjectIds([]);
+        } else {
+          setSelectedTag(null);
+          setCurrentObjects([]);
+          setSelectedObject(null);
+          setSelectedObjectIds([]);
+        }
+
+        console.log('currentObjects:', currentObjects);
+        console.log('selectedTag:', selectedTag);
+        console.log('tagObjects:', tagObjects);
+
+        setAlertMessage('Core/ESN에서 템플릿을 불러왔습니다.');
+        setIsAlertOpen(true);
+        
       } catch (error) {
+        setAlertMessage('Core/ESN에서 템플릿 불러오기에 실패했습니다.');
+        setIsAlertOpen(true);
+      }finally{
         dispatch(setLoading(false));
-        dispatch(setError('템플릿 정보를 불러오지 못했습니다.'));
       }
     };
+    
     loadTemplates();
   }, [dispatch]);
 
@@ -96,7 +132,7 @@ const Dashboard: React.FC = () => {
         []
       );
     }
-  }, [selectedTag]);
+  }, [selectedTag, tagObjects]); // tagObjects도 의존성에 추가
 
   // 태그의 유니크 키 생성 함수
   const getTagKey = (tag: TLayout) => `${tag.Guid}__${tag.Name}`;
@@ -117,6 +153,13 @@ const Dashboard: React.FC = () => {
       (tag.Objects && [...tag.Objects]) ||
       []
     );
+
+    console.log('handleTagSelect - currentObjects:', 
+      (tagObjects[getTagKey(tag)] && [...tagObjects[getTagKey(tag)]]) ||
+      (tag.Objects && [...tag.Objects]) ||
+      []
+    );
+
   };
 
   const handleManageTags = () => {
@@ -321,6 +364,80 @@ const Dashboard: React.FC = () => {
     dispatch(updateTagObjects({ tagName: getTagKey(newLayout), objects: [] }));
   };
 
+  // Toolbar의 "Send to Core/ESN"와 "Load from Core/ESN" 버튼 기능 구현
+  // 1. Load: fetchTemplateData 사용
+  const handleLoadFromCoreESN = async () => {
+    try {
+      dispatch(setLoading(true));
+      const res = await fetchTemplateData();
+      const templates = res?.data?.[0]?.Templates || [];
+      const matches = res?.data?.[0]?.Matches?.Basic || [];
+
+      dispatch(setTemplates(templates));
+      dispatch(setBasicMatches(matches));
+
+      // tagObjects 동기화 후 selectedTag/currentObjects 세팅
+      templates.forEach(t => {
+        console.log('[서버에서 받아온 objects]', t.Name, t.Objects); // ← 여기!
+        dispatch(updateTagObjects({
+          tagName: `${t.Guid}__${t.Name}`,
+          objects: t.Objects || []
+        }));
+      });
+
+      // TagList/selectedTagsSlice 동기화
+      const tagArr = templates.map(t => ({ name: t.Name, width: t.Width, height: t.Height }));
+      dispatch(setAvailableTags(tagArr));
+      dispatch(setSelectedTags(tagArr));
+
+      // tagObjects 동기화가 완료된 후 selectedTag/currentObjects 세팅을 보장하기 위해 setTimeout 사용
+      setTimeout(() => {
+        if (templates.length > 0) {
+          setSelectedTag(templates[0]);
+          setCurrentObjects(templates[0].Objects || []);
+          setSelectedObject(null);
+          setSelectedObjectIds([]);
+        } else {
+          setSelectedTag(null);
+          setCurrentObjects([]);
+          setSelectedObject(null);
+          setSelectedObjectIds([]);
+        }
+      }, 0);
+
+      setAlertMessage('Core/ESN에서 템플릿을 불러왔습니다.');
+      setIsAlertOpen(true);
+    } catch (error) {
+      setAlertMessage('Core/ESN에서 템플릿 불러오기에 실패했습니다.');
+      setIsAlertOpen(true);
+      console.log('Error loading template from Core/ESN:', error);
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  // 2. Send: MakeExportJson 구조 참고하여 exportTemplateData로 전송
+  const handleSendToCoreESN = async () => {
+    try {
+      // MakeExportJson 구조 참고: Matches, Templates 포함
+      const exportPayload = {
+        Matches: {
+          Basic: templateState.Matches?.Basic ?? [],
+          Special: templateState.Matches?.Special ?? []
+        },
+        Templates: templateState.templates
+      };
+      await exportTemplateData(exportPayload);
+      setAlertMessage('템플릿이 Core/ESN으로 전송되었습니다.');
+      setIsAlertOpen(true);
+    } catch (error) {
+      setAlertMessage('템플릿 전송에 실패했습니다.');
+      setIsAlertOpen(true);
+    }
+  };
+
+  console.log('Canvas에 전달되는 currentObjects:', currentObjects);
+
   return (
     <ContextMenuProvider>
       <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -335,8 +452,8 @@ const Dashboard: React.FC = () => {
             onMergeTemplates={() => console.log('Merge')}
             onSaveTemplate={handleSaveTemplate}
             onExportBitmap={() => console.log('Export')}
-            onSendToCoreESN={() => console.log('Send')}
-            onLoadFromCoreESN={() => console.log('Load')}
+            onSendToCoreESN={handleSendToCoreESN} // Toolbar에 연결
+            onLoadFromCoreESN={handleLoadFromCoreESN} // Toolbar에 연결
             onLogout={handleLogout}
           />
         </header>
@@ -358,7 +475,8 @@ const Dashboard: React.FC = () => {
           {/* Right - Canvas */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 flex items-center justify-center">
-              {selectedTag ? (
+              
+              {selectedTag ? (  
                 <Canvas
                   width={selectedTag.Width}
                   height={selectedTag.Height}

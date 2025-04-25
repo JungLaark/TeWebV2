@@ -427,47 +427,56 @@ const Canvas: React.FC<CanvasProps> = ({
   // 객체 그리기 함수 통합 (먼저 선언)
   const drawObject = useCallback(async (ctx: CanvasRenderingContext2D, obj: TObject) => {
 
-    //console.log('도형 추가:', { id: obj.ZOrder, Type: obj.Type, ZOrder: obj.ZOrder, PosX: obj.PosX, PosY: obj.PosY });
+    try{
+      console.log('도형 추가:', { id: obj.ZOrder, Type: obj.Type, ZOrder: obj.ZOrder, PosX: obj.PosX, PosY: obj.PosY });
 
-    const typeLoweCase = obj.Type.toLowerCase();
-    
-    switch (typeLoweCase) {
-      case 'rect':
-        drawRect(ctx, obj);
-        break;
-      case 'circle':
-      case 'ellipse':
-        drawCircle(ctx, obj);
-        break;
-      case 'triangle':
-        drawTriangle(ctx, obj);
-        break;
-      case 'text':
-        drawText(ctx, obj);
-        break;
-      case 'line':
-        drawLine(ctx, obj);
-        break;
-      case 'polygon':
-        drawPolygon(ctx, obj);
-        break;
-      case 'polyline':
-        drawPolyline(ctx, obj);
-        break;
-      case 'image':
-        if (obj.ImageBase64) {
-          await drawImageWithCache(ctx, obj);
-        }
-        break;
-      case 'barcode':
-        await drawBarcode(ctx, obj);
-        break;
-      case 'qrcode':
-        await drawQRCode(ctx, obj);
-        break;
-      default:
-        console.warn('Unknown object type:', obj.Type);
+      const typeLoweCase = obj.Type.toLowerCase();
+      
+      switch (typeLoweCase) {
+        case 'rect':
+          drawRect(ctx, obj);
+          break;
+        case 'roundrect':
+          drawRect(ctx, obj); // RoundRect도 일반 사각형처럼 처리
+          break;
+        case 'circle':
+        case 'ellipse':
+          drawCircle(ctx, obj);
+          break;
+        case 'triangle':
+          drawTriangle(ctx, obj);
+          break;
+        case 'text':
+          drawText(ctx, obj);
+          break;
+        case 'line':
+          drawLine(ctx, obj);
+          break;
+        case 'polygon':
+          drawPolygon(ctx, obj);
+          break;
+        case 'polyline':
+          drawPolyline(ctx, obj);
+          break;
+        case 'image':
+          if (obj.ImageBase64) {
+            await drawImageWithCache(ctx, obj);
+          }
+          break;
+        case 'barcode':
+          await drawBarcode(ctx, obj);
+          break;
+        case 'qrcode':
+          await drawQRCode(ctx, obj);
+          break;
+        default:
+          console.warn('Unknown object type:', obj.Type);
+      }
+    }catch(err){
+      console.error('Error drawing object:', err);
+
     }
+   
   }, []);
 
   const drawSelectionBox = (ctx: CanvasRenderingContext2D, obj: TObject) => {
@@ -498,7 +507,7 @@ const Canvas: React.FC<CanvasProps> = ({
         { x: obj.PosX + obj.Width/2 - handleSize/2, y: obj.PosY - handleSize/2, cursor: 'ns-resize', pos: 'tm' },
         { x: obj.PosX + obj.Width/2 - handleSize/2, y: obj.PosY + obj.Height - handleSize/2, cursor: 'ns-resize', pos: 'bm' },
         { x: obj.PosX - handleSize/2, y: obj.PosY + obj.Height/2 - handleSize/2, cursor: 'ew-resize', pos: 'ml' },
-        { x: obj.PosX + obj.Width - handleSize/2, y: obj.PosY + obj.Height/2 - handleSize/2, cursor: 'ew-resize', pos: 'mr' },
+        { x: obj.PosX + obj.Width, y: obj.PosY + obj.Height/2 - handleSize/2, cursor: 'ew-resize', pos: 'mr' },
       ];
       ctx.fillStyle = '#fff';
       ctx.strokeStyle = '#0066ff';
@@ -522,6 +531,8 @@ const Canvas: React.FC<CanvasProps> = ({
     const offscreenCtx = offscreenCanvas?.getContext('2d', { alpha: false });
     
     if (!offscreenCtx || !offscreenCanvas) return;
+
+    console.log('[renderCanvas objectsToRender] renderCanvas:', objectsToRender.length, objectsToRender);
 
     // 캔버스 초기화
     offscreenCtx.fillStyle = 'white';
@@ -559,6 +570,7 @@ const Canvas: React.FC<CanvasProps> = ({
   // 도형 그리기 함수들
   const drawRect = (ctx: CanvasRenderingContext2D, obj: TObject) => {
     ctx.save();
+    console.log('drawRect 호출:', obj);
     const rect = {
       left: obj.PosX,
       top: obj.PosY,
@@ -927,9 +939,9 @@ const Canvas: React.FC<CanvasProps> = ({
 
       // 테두리 표시
       if (obj.ShowBoarder) {
-        ctx.strokeStyle = obj.PenColor;
-        ctx.lineWidth = obj.PenWidth;
-        if (obj.BorderShape === 1) { // RoundRect
+        ctx.strokeStyle = obj.PenColor || '#000000';
+        ctx.lineWidth = obj.PenWidth || 1;
+        if (obj.BorderShape === 1) {
           const radius = obj.ArcsWidth || 5;
           ctx.beginPath();
           ctx.roundRect(obj.PosX, obj.PosY, obj.Width, obj.Height, radius);
