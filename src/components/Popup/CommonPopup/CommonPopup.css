@@ -17,13 +17,17 @@
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
   display: flex;
   flex-direction: column;
-  min-width: 360px;
-  max-width: 480px;
-  width: 100%;
-  min-height: 700px;
-  max-height: 90vh;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  max-width: 320px;
+  width: auto;
+  min-height: 120px;
+  max-height: 200px;
   margin: 0 16px;
+  padding: 32px 32px 24px 32px;
   overflow: hidden;
+  z-index: 10001;
 }
 
 .popup-header {
@@ -117,6 +121,28 @@
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* AlertDialog 버튼 스타일 개선 */
+.common-popup-btn {
+  min-width: 80px;
+  font-size: 16px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  background: #334155;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  margin-top: 12px;
+  margin-bottom: 8px;
+  transition: background 0.15s;
+  position: static;
+}
+.common-popup-btn:hover, .common-popup-btn:focus {
+  background: #475569;
+  color: #fff;
+  outline: none;
+  transform: none !important;
 }
 
 /* body > *:not(.popup-overlay) {
