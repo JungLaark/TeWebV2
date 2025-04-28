@@ -26,6 +26,8 @@ import TagPropertyModal from '../../components/PropertyPanel/TagPropertyModal';
 import { exportTemplateData } from '../../api/services/template';
 import { setAvailableTags, setSelectedTags } from '../../store/features/selectedTagsSlice';
 import { setBasicMatches } from '../../store/features/templateSlice';
+import { ModelTypeDescription } from '../../types/TLayout';
+import AlertDialog from '../../components/Popup/CommonPopup/AlertDialog';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -36,7 +38,8 @@ const Dashboard: React.FC = () => {
   const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
   const [isManageTagsPopupOpen, setIsManageTagsPopupOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [draggingObjects, setDraggingObjects] = useState<{[key: string]: {x: number, y: number}}>({});
+  // draggingObjects 타입 확장: width, height 포함
+  const [draggingObjects, setDraggingObjects] = useState<{[key: string]: {x: number, y: number, width?: number, height?: number}}>({});
   const [isTagPropertyModalOpen, setIsTagPropertyModalOpen] = useState(false);
   const currentObjectsRef = useRef<TObject[]>([]);
   const [currentObjects, setCurrentObjects] = useState<TObject[]>([]);
@@ -173,10 +176,13 @@ const Dashboard: React.FC = () => {
   // 객체의 고유 식별자: id가 있으면 id, 없으면 ZOrder(string)
   const getObjectId = (obj: TObject) => (String(obj.ZOrder));
 
+  // 파스칼케이스 변환 함수
+  const toPascalCase = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
   const handleAddShape = (type: string) => {
     if (!selectedTag) return;
     const newObject: TObject = {
-      Type: type.toLowerCase(),
+      Type: toPascalCase(type),
       ZOrder: currentObjects.length,
       PenWidth: 2,
       PenColor: "Black",
@@ -214,9 +220,12 @@ const Dashboard: React.FC = () => {
     };
     const updatedObjects = [...currentObjects, newObject];
     setCurrentObjects(updatedObjects);
-    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
-    setSelectedObject(newObject);
-    setSelectedObjectIds([String(newObject.ZOrder)]);
+    setSelectedTag({
+      ...selectedTag!,
+      Objects: updatedObjects
+    });
+    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
+    dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
   };
 
   const handleAddText = () => {
@@ -224,7 +233,7 @@ const Dashboard: React.FC = () => {
     const centerX = (selectedTag.Width - 200) / 2;
     const centerY = (selectedTag.Height - 30) / 2;
     const newText: TObject = {
-      Type: 'text',
+      Type: "Text",
       ZOrder: currentObjects.length,
       PenWidth: 1,
       PenColor: "Black",
@@ -262,9 +271,12 @@ const Dashboard: React.FC = () => {
     };
     const updatedObjects = [...currentObjects, newText];
     setCurrentObjects(updatedObjects);
-    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
-    setSelectedObject(newText);
-    setSelectedObjectIds([String(newText.ZOrder)]);
+    setSelectedTag({
+      ...selectedTag!,
+      Objects: updatedObjects
+    });
+    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
+    dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
   };
 
   const handleDeleteObjects = (objectIds: string[]) => {
@@ -376,6 +388,8 @@ const Dashboard: React.FC = () => {
       dispatch(setTemplates(templates));
       dispatch(setBasicMatches(matches));
 
+      console.log('[Dashboard] 서버에서 받아온 templates:', templates);
+
       // tagObjects 동기화 후 selectedTag/currentObjects 세팅
       templates.forEach(t => {
         console.log('[서버에서 받아온 objects]', t.Name, t.Objects); // ← 여기!
@@ -386,7 +400,11 @@ const Dashboard: React.FC = () => {
       });
 
       // TagList/selectedTagsSlice 동기화
-      const tagArr = templates.map(t => ({ name: t.Name, width: t.Width, height: t.Height }));
+      const tagArr = templates.map(t => ({
+        name: ModelTypeDescription[t.Model], // ModelTypeDescription 값으로 name 세팅
+        width: t.Width,
+        height: t.Height
+      }));
       dispatch(setAvailableTags(tagArr));
       dispatch(setSelectedTags(tagArr));
 
@@ -419,24 +437,64 @@ const Dashboard: React.FC = () => {
   // 2. Send: MakeExportJson 구조 참고하여 exportTemplateData로 전송
   const handleSendToCoreESN = async () => {
     try {
+
+      const fixNumber = (v: any) => (typeof v === 'number' && isFinite(v) ? Math.round(Math.max(0, v)) : 0);
+
+      const syncedTemplates = templateState.templates.map(t => {
+        const tagKey = `${t.Guid}__${t.Name}`;
+        const objects = (tagObjects[tagKey] ?? t.Objects).map(obj => ({
+          ...obj,
+          PosX: fixNumber(obj.PosX),
+          PosY: fixNumber(obj.PosY),
+          //PosX1: fixNumber(obj.PosX1),
+          //PosY1: fixNumber(obj.PosY1),
+          Width: fixNumber(obj.Width),
+          Height: fixNumber(obj.Height),
+          // 필요하다면 PosX1, PosY1 등도 보정
+        }));
+        return {
+          ...t,
+          Objects: objects
+        };
+      });
+
       // MakeExportJson 구조 참고: Matches, Templates 포함
       const exportPayload = {
         Matches: {
           Basic: templateState.Matches?.Basic ?? [],
           Special: templateState.Matches?.Special ?? []
         },
-        Templates: templateState.templates
+        //Templates: templateState.templates
+        Templates: syncedTemplates
       };
+
+      console.log('[템플릿 전송 데이터]:',JSON.stringify(exportPayload));
+
       await exportTemplateData(exportPayload);
       setAlertMessage('템플릿이 Core/ESN으로 전송되었습니다.');
       setIsAlertOpen(true);
     } catch (error) {
       setAlertMessage('템플릿 전송에 실패했습니다.');
       setIsAlertOpen(true);
+      console.error('Error sending template to Core/ESN:', error);
     }
   };
 
   console.log('Canvas에 전달되는 currentObjects:', currentObjects);
+
+  // 드래그 종료(마우스 업) 시 Redux에 동기화
+  const handleCanvasMouseUp = (updatedObjects: TObject[]) => {
+    if (selectedTag) {
+      dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+      dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+      setCurrentObjects(updatedObjects); // 로컬 상태도 최신으로 동기화
+      setSelectedTag({
+        ...selectedTag,
+        Objects: updatedObjects
+      });
+    }
+    setIsDragging(false);
+  };
 
   return (
     <ContextMenuProvider>
@@ -484,11 +542,11 @@ const Dashboard: React.FC = () => {
                   objects={currentObjects}
                   onUpdateObjects={(updatedObjects) => {
                     setCurrentObjects(updatedObjects);
-                    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
                     setSelectedTag({
-                      ...selectedTag,
+                      ...selectedTag!,
                       Objects: updatedObjects
                     });
+                    // Redux 동기화는 드래그 종료 시에만 수행
                   }}
                   onObjectSelect={handleObjectSelect}
                   selectedObjectIds={selectedObjectIds}
@@ -500,6 +558,7 @@ const Dashboard: React.FC = () => {
                   setIsDragging={setIsDragging}
                   draggingObjects={draggingObjects}
                   setDraggingObjects={setDraggingObjects}
+                  onMouseUp={handleCanvasMouseUp}
                 />
               ) : (
                 <div className="text-gray-500">Select a tag to start editing</div>
@@ -560,6 +619,12 @@ const Dashboard: React.FC = () => {
           selectedTag={selectedTag}
           onUpdateTag={handleUpdateTag}
           onClose={handleCloseTagPropertyModal}
+        />
+        {/* AlertDialog 팝업 추가 */}
+        <AlertDialog
+          isOpen={isAlertOpen}
+          message={alertMessage}
+          onClose={() => setIsAlertOpen(false)}
         />
       </div>
     </ContextMenuProvider>

@@ -172,12 +172,17 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, handleAddSu
   const selectedTags = useSelector((state: RootState) => state.selectedTags.selectedTags);
   // 전체 TLayout 목록 가져오기 (templateSlice의 templates)
   const tLayoutList = useSelector((state: RootState) => state.template.templates);
-  console.log('tLayoutList:', tLayoutList);
+  
+  
+  console.log('[TagList] tLayoutList:', tLayoutList);
+  console.log('[TagList] selectedTags:', selectedTags);
 
   // 선택된 태그만 필터링 (ModelTypeDescription[tpl.Model]과 tag.name 비교)
   const filteredList = tLayoutList.filter(tpl =>
     selectedTags.some(tag => tag.name === ModelTypeDescription[tpl.Model])
   );
+
+  console.log('[TagList] filteredList:', filteredList);
 
   // 트리 구조로 변환
   const tree = buildTemplateTree(filteredList);
