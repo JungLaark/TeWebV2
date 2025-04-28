@@ -20,7 +20,7 @@
   align-items: center;
   justify-content: center;
   min-width: 180px;
-  max-width: 320px;
+  max-width: 360px;
   width: auto;
   min-height: 120px;
   max-height: 200px;
@@ -161,3 +161,7 @@ body.loading-overlay-active > *:not(.popup-overlay) {
   filter: blur(2px) grayscale(0.2);
 }
 */
+
+.text-nowrap {
+  white-space: nowrap;
+}
