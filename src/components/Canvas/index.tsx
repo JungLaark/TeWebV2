@@ -140,18 +140,22 @@ const Canvas: React.FC<CanvasProps> = ({
   // 마우스 다운 핸들러 수정
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoordinates(e);
-    console.log('Mouse down at coords:', coords);
-    
-    // 선택된 객체가 있을 때 리사이즈 핸들 클릭 여부 우선 체크
+    // 리사이즈 핸들 클릭 여부 우선 체크
+    let isResize = false;
     if (selectedObjectIds.length === 1) {
       const obj = objects.find(o => getObjectId(o) === selectedObjectIds[0]);
       if (obj) {
         const handlePos = getHandleAtPosition(obj, coords.x, coords.y);
         if (handlePos) {
           setResizeHandle({ objId: getObjectId(obj), handlePos, startX: coords.x, startY: coords.y, orig: { ...obj } });
-          return;
+          setIsDragging(false); // 리사이즈 시작 시 드래그 해제
+          isResize = true;
         }
       }
+    }
+    if (!isResize) {
+      setResizeHandle(null);
+      setIsDragging(true); // 드래그 시작
     }
 
     // 클릭한 위치의 객체 찾기 (ZOrder가 높은 것부터 검사)
@@ -161,7 +165,6 @@ const Canvas: React.FC<CanvasProps> = ({
     for (const obj of sortedObjects) {
       if (isObjectAtPosition(obj, coords.x, coords.y)) {
         console.log('Found object at position:', obj);
-        setIsDragging(true);
         setDragStartPos(coords);
         
         const objId = getObjectId(obj);
@@ -230,13 +233,12 @@ const Canvas: React.FC<CanvasProps> = ({
   
   // 마우스 이동 핸들러 최적화
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const coords = getCanvasCoordinates(e);
     if (resizeHandle) {
       const { objId, handlePos, startX, startY, orig } = resizeHandle;
+      const coords = getCanvasCoordinates(e);
       const dx = coords.x - startX;
       const dy = coords.y - startY;
       let newObj = { ...orig };
-      // 각 핸들 위치별로 width/height/pos 조정
       switch (handlePos) {
         case 'tl':
           newObj.PosX = orig.PosX + dx;
@@ -273,77 +275,99 @@ const Canvas: React.FC<CanvasProps> = ({
           newObj.Width = orig.Width + dx;
           break;
       }
-      // 최소 크기 제한
       newObj.Width = Math.max(10, newObj.Width);
       newObj.Height = Math.max(10, newObj.Height);
-      // 객체 업데이트
-      onUpdateObjects(objects.map(o => getObjectId(o) === objId ? newObj : o));
+      // draggingObjects에 임시 크기/위치 저장
+      setDraggingObjects({ [objId]: { x: newObj.PosX, y: newObj.PosY, width: newObj.Width, height: newObj.Height } });
       return;
-    }
+    } else if (isDragging) {
+      e.preventDefault();
 
-    if (!isDragging || selectedObjectIds.length === 0) return;
+      const coords = getCanvasCoordinates(e);
+      const dx = coords.x - dragStartPos.x;
+      const dy = coords.y - dragStartPos.y;
 
-    e.preventDefault();
+      // 이전 위치와 현재 위치의 차이를 계산
+      const deltaX = dx - previousDragPositionRef.current.x;
+      const deltaY = dy - previousDragPositionRef.current.y;
 
-    const dx = coords.x - dragStartPos.x;
-    const dy = coords.y - dragStartPos.y;
+      // 새로운 위치 계산에 델타값 사용
+      // draggingObjects는 항상 getObjectId(obj)로 key를 맞춤
+      const newDraggingObjects = Object.fromEntries(
+        selectedObjectIds.map(objId => {
+          const initialPos = selectedObjectsInitialPos[objId];
+          if (!initialPos) return [objId, null];
+          return [objId, {
+            x: initialPos.x + dx,
+            y: initialPos.y + dy
+          }];
+        }).filter(([_, pos]) => pos !== null)
+      );
 
-    // 이전 위치와 현재 위치의 차이를 계산
-    const deltaX = dx - previousDragPositionRef.current.x;
-    const deltaY = dy - previousDragPositionRef.current.y;
+      setDraggingObjects(newDraggingObjects);
+      
+      // 현재 드래그 위치를 저장
+      previousDragPositionRef.current = { x: dx, y: dy };
 
-    // 새로운 위치 계산에 델타값 사용
-    const newDraggingObjects = Object.fromEntries(
-      selectedObjectIds.map(objId => {
-        const initialPos = selectedObjectsInitialPos[objId];
-        if (!initialPos) return [objId, null];
-        return [objId, {
-          x: initialPos.x + dx,
-          y: initialPos.y + dy
-        }];
-      }).filter(([_, pos]) => pos !== null)
-    );
+      // 렌더링 최적화
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
 
-    setDraggingObjects(newDraggingObjects);
-    
-    // 현재 드래그 위치를 저장
-    previousDragPositionRef.current = { x: dx, y: dy };
+      rafRef.current = requestAnimationFrame(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d', { alpha: false });
+        if (!ctx || !canvas) return;
 
-    // 렌더링 최적화
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-    }
+        // 드래그 중인 객체들의 임시 상태 생성
+        const draggedObjects = objects.map(obj => {
+          const draggingPos = newDraggingObjects[getObjectId(obj)];
+          if (draggingPos) {
+            return {
+              ...obj,
+              PosX: draggingPos.x,
+              PosY: draggingPos.y
+            };
+          }
+          return obj;
+        });
 
-    rafRef.current = requestAnimationFrame(() => {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d', { alpha: false });
-      if (!ctx || !canvas) return;
-
-      // 드래그 중인 객체들의 임시 상태 생성
-      const draggedObjects = objects.map(obj => {
-        const draggingPos = newDraggingObjects[getObjectId(obj)];
-        if (draggingPos) {
-          return {
-            ...obj,
-            PosX: draggingPos.x,
-            PosY: draggingPos.y
-          };
-        }
-        return obj;
+        // 렌더링
+        renderCanvas(ctx, canvas, draggedObjects);
       });
-
-      // 렌더링
-      renderCanvas(ctx, canvas, draggedObjects);
-    });
+    }
+    // 둘 다 아니면 아무것도 하지 않음
   }, [isDragging, selectedObjectIds, dragStartPos, selectedObjectsInitialPos, objects, resizeHandle, onUpdateObjects]);
 
   // 마우스 업 핸들러 수정
   const handleMouseUp = () => {
     if (resizeHandle) {
+      if (Object.keys(draggingObjects).length > 0) {
+        const updatedObjects = objects.map(obj => {
+          const drag = draggingObjects[getObjectId(obj)];
+          if (drag && drag.width && drag.height) {
+            return {
+              ...obj,
+              PosX: drag.x,
+              PosY: drag.y,
+              Width: drag.width,
+              Height: drag.height
+            };
+          }
+          return obj;
+        });
+        onUpdateObjects(updatedObjects);
+        if (typeof onMouseUp === 'function') {
+          onMouseUp(updatedObjects);
+        }
+      }
       setResizeHandle(null);
+      setIsDragging(false);
+      setDraggingObjects({});
+      setSelectedObjectsInitialPos({});
+      previousDragPositionRef.current = { x: 0, y: 0 };
       return;
     }
-
     if (isDragging && Object.keys(draggingObjects).length > 0) {
       const updatedObjects = objects.map(obj => {
         const draggingPos = draggingObjects[getObjectId(obj)];
@@ -357,11 +381,14 @@ const Canvas: React.FC<CanvasProps> = ({
         return obj;
       });
       onUpdateObjects(updatedObjects);
+      if (typeof onMouseUp === 'function') {
+        onMouseUp(updatedObjects);
+      }
     }
-
+    setResizeHandle(null);
     setIsDragging(false);
-    setSelectedObjectsInitialPos({});
     setDraggingObjects({});
+    setSelectedObjectsInitialPos({});
     previousDragPositionRef.current = { x: 0, y: 0 };
   };
 
@@ -1309,28 +1336,29 @@ const Canvas: React.FC<CanvasProps> = ({
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (!ctx || !canvas) return;
-
-      // 드래그 중이면 draggingObjects에 포함된 객체만 좌표를 변경, 나머지는 원본 객체 그대로 사용
       let objectsToRender = objects;
-      if (isDragging && Object.keys(draggingObjects).length > 0) {
+      // 드래그/리사이즈 중이면 draggingObjects에 포함된 객체만 임시 좌표/크기 적용
+      if ((isDragging || resizeHandle) && Object.keys(draggingObjects).length > 0) {
         objectsToRender = objects.map(obj => {
-          const key = String(obj.ZOrder);
-          if (draggingObjects[key]) {
+          const key = getObjectId(obj);
+          const drag = draggingObjects[key];
+          if (drag) {
             return {
               ...obj,
-              PosX: draggingObjects[key].x,
-              PosY: draggingObjects[key].y
+              PosX: drag.x,
+              PosY: drag.y,
+              Width: drag.width !== undefined ? drag.width : obj.Width,
+              Height: drag.height !== undefined ? drag.height : obj.Height
             };
           }
-          return obj; // draggingObjects에 없는 객체는 원본 그대로 반환
+          return obj;
         });
       }
-
       await renderCanvas(ctx, canvas, objectsToRender);
     };
 
     renderAndUpdate();
-  }, [objects, width, height, scale, selectedObjectIds, draggingObjects, isDragging, renderCanvas]);
+  }, [objects, width, height, scale, selectedObjectIds, draggingObjects, isDragging, resizeHandle, renderCanvas]);
 
   // 휠 이벤트 리스너
   useEffect(() => {

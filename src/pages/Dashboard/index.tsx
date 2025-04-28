@@ -126,16 +126,15 @@ const Dashboard: React.FC = () => {
     currentObjectsRef.current = currentObjects;
   }, [currentObjects]);
 
-  // selectedTag가 바뀔 때마다 currentObjects를 동기화
+  // selectedTag가 바뀔 때만 currentObjects를 동기화 (tagObjects 의존성 제거)
   useEffect(() => {
     if (selectedTag) {
-      setCurrentObjects(
-        (tagObjects[getTagKey(selectedTag)] && [...tagObjects[getTagKey(selectedTag)]]) ||
+      const newObjects =
         (selectedTag.Objects && [...selectedTag.Objects]) ||
-        []
-      );
+        [];
+      setCurrentObjects(newObjects);
     }
-  }, [selectedTag, tagObjects]); // tagObjects도 의존성에 추가
+  }, [selectedTag]);
 
   // 태그의 유니크 키 생성 함수
   const getTagKey = (tag: TLayout) => `${tag.Guid}__${tag.Name}`;
@@ -485,13 +484,13 @@ const Dashboard: React.FC = () => {
   // 드래그 종료(마우스 업) 시 Redux에 동기화
   const handleCanvasMouseUp = (updatedObjects: TObject[]) => {
     if (selectedTag) {
-      dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
-      dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
-      setCurrentObjects(updatedObjects); // 로컬 상태도 최신으로 동기화
+      setCurrentObjects(updatedObjects); // 1. 로컬 상태 먼저 갱신
       setSelectedTag({
         ...selectedTag,
         Objects: updatedObjects
       });
+      dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+      dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
     }
     setIsDragging(false);
   };
