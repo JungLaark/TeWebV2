@@ -11,6 +11,7 @@ interface ContextMenuState {
     tagHeight?: number;
     tagGuid?: string;
     modelType?: ModelType;
+    orientation?: number; // orientation 명시적으로 추가
     onEdit?: () => void;
     onCopy?: () => void;
     onDelete?: () => void;

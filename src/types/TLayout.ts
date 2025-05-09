@@ -43,7 +43,6 @@ export interface TLayout {
   Model: ModelType;
   DisplayName: string;
   Bookmark: boolean;
-  ModelName: string;
   Width: number;
   Height: number;
   Orientation: OrientationType;
@@ -60,7 +59,6 @@ export interface TLayout {
   PValue: string;      // PValue 추가
   popTValue?: string; // 읽기 전용 속성 추가
   Desc?: string;  // 읽기 전용 속성 추가
-  TemplateType: TemplateEnum;  // enum 타입으로 변경
   previewImage?: string;  // 이미지는 base64 string으로 저장
   thumnailImage?: string; // 이미지는 base64 string으로 저장
   Objects: TObject[];
@@ -170,21 +168,21 @@ export enum TemplateEnum {
   TripleFacing = 'TripleFacing',
   QuadFacing = 'QuadFacing',
   Reserved = 'Reserved',
-  Stock = 'Stock',
   Soldout = 'Soldout',
+  Stock = 'Stock',
   StorageBox = 'StorageBox'
 }
 
 // OrientationType enum 추가
 export enum OrientationType {
-  Portrait = 'Portrait',
-  Landscape = 'Landscape'
+  Portrait,
+  Landscape
 }
 
 // DirectionType enum 추가
 export enum DirectionType {
-  Default = 'Default',
-  Rotation = 'Rotation'
+  Default,
+  Rotation
 }
 
 // 필요한 추가 enum들 정의

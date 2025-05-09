@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModelType, OrientationType } from '../../types';
 import { isPortrait } from '../../utils/orientationUtils';
-import { handleAddPage1, handleAddDivisions } from '../../utils/contextMenuHandlers/TagAddHandlers';
+import { handleAddPage1, handleAddDivisions, handleAddPop } from '../../utils/contextMenuHandlers/TagAddHandlers';
 import './ContextMenu.css';
 
 interface ContextMenuProps {
@@ -14,6 +14,7 @@ interface ContextMenuProps {
     tagHeight?: number;
     tagGuid?: string;  // GUID 추가
     modelType?: ModelType;  // ModelType 추가
+    orientation?: number; // orientation 추가
     onAddSubTag?: (parentTagName: string, newLayout: any) => void; // 새로운 레이아웃 전달
   };
 }
@@ -34,95 +35,114 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions }) => 
     }
   }, [y]);
 
-  const menuItems = [
-    { 
-      label: 'Add a Page 1', 
-      onClick: () => {
-        if (!actions?.tagName) return;
+  const isPromotion = actions?.TType === 'Promotion' || actions?.data?.TType === 'Promotion';
 
-        handleAddPage1({
-          tagName: actions.tagName,
-          model: actions.modelType || ModelType.M21,
-          orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
-          width: actions.tagWidth || 0,
-          height: actions.tagHeight || 0,
-          tagGuid: actions.tagGuid,
-          onComplete: (newLayout) => {
-            if (actions.onAddSubTag) {
-              actions.onAddSubTag(actions.tagName, newLayout);
-            }
-            onClose();
+  const menuItems = isPromotion
+    ? [
+        {
+          label: 'Add a POP',
+          onClick: () => {
+            if (!actions?.tagGuid) return;
+            handleAddPop({
+              parentGuid: actions.tagGuid,
+              onComplete: (newPopLayout) => {
+                if (actions.onAddPop) actions.onAddPop(actions.tagName, newPopLayout);
+                onClose();
+              }
+            });
           }
-        });
-      }
-    },
-    { label: 'Add a Page 2', onClick: () => console.log('Add Page 2:', actions?.tagName) },
-    { label: 'Add a Page 3', onClick: () => console.log('Add Page 3:', actions?.tagName) },
-    { type: 'separator' as const },
-    { 
-      label: 'Add a 2 Divisions',
-      onClick: () => {
-        if (!actions?.tagName) return;
-        handleAddDivisions({
-          tagName: actions.tagName,
-          model: actions.modelType || ModelType.M21, // 전달받은 modelType 사용
-          orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
-          width: actions.tagWidth || 0,
-          height: actions.tagHeight || 0,
-          tagGuid: actions.tagGuid,
-          divisionsType: 2,
-          onComplete: (newLayout) => {
-            console.log('New layout created:', newLayout);
-            // TODO: 여기서 부모 컴포넌트에 새로운 레이아웃 전달
-            onClose();
+        }
+      ]
+    : [
+        { 
+          label: 'Add a Page 1', 
+          onClick: () => {
+            if (!actions?.tagName) return;
+
+            handleAddPage1({
+              tagName: actions.tagName,
+              model: actions.modelType || ModelType.M21,
+              //orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
+              orientation: actions.orientation ?? (isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape),
+              width: actions.tagWidth || 0,
+              height: actions.tagHeight || 0,
+              tagGuid: actions.tagGuid,
+              onComplete: (newLayout) => {
+                if (actions.onAddSubTag) {
+                  actions.onAddSubTag(actions.tagName, newLayout);
+                }
+                onClose();
+              }
+            });
           }
-        });
-      }
-    },
-    { 
-      label: 'Add a 3 Divisions',
-      onClick: () => {
-        if (!actions?.tagName) return;
-        handleAddDivisions({
-          tagName: actions.tagName,
-          model: actions.modelType || ModelType.M21, // 전달받은 modelType 사용
-          orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
-          width: actions.tagWidth || 0,
-          height: actions.tagHeight || 0,
-          tagGuid: actions.tagGuid,
-          divisionsType: 3,
-          onComplete: (newLayout) => {
-            console.log('New layout created:', newLayout);
-            // TODO: 여기서 부모 컴포넌트에 새로운 레이아웃 전달
-            onClose();
+        },
+        { label: 'Add a Page 2', onClick: () => console.log('Add Page 2:', actions?.tagName) },
+        { label: 'Add a Page 3', onClick: () => console.log('Add Page 3:', actions?.tagName) },
+        { type: 'separator' as const },
+        { 
+          label: 'Add a 2 Divisions',
+          onClick: () => {
+            if (!actions?.tagName) return;
+            handleAddDivisions({
+              tagName: actions.tagName,
+              model: actions.modelType || ModelType.M21, // 전달받은 modelType 사용
+              orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
+              width: actions.tagWidth || 0,
+              height: actions.tagHeight || 0,
+              tagGuid: actions.tagGuid,
+              divisionsType: 2,
+              onComplete: (newLayout) => {
+                console.log('New layout created:', newLayout);
+                // TODO: 여기서 부모 컴포넌트에 새로운 레이아웃 전달
+                onClose();
+              }
+            });
           }
-        });
-      }
-    },
-    { 
-      label: 'Add a 4 Divisions',
-      onClick: () => {
-        if (!actions?.tagName) return;
-        handleAddDivisions({
-          tagName: actions.tagName,
-          model: actions.modelType || ModelType.M21, // 전달받은 modelType 사용
-          orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
-          width: actions.tagWidth || 0,
-          height: actions.tagHeight || 0,
-          tagGuid: actions.tagGuid,
-          divisionsType: 4,
-          onComplete: (newLayout) => {
-            console.log('New layout created:', newLayout);
-            // TODO: 여기서 부모 컴포넌트에 새로운 레이아웃 전달
-            onClose();
+        },
+        { 
+          label: 'Add a 3 Divisions',
+          onClick: () => {
+            if (!actions?.tagName) return;
+            handleAddDivisions({
+              tagName: actions.tagName,
+              model: actions.modelType || ModelType.M21, // 전달받은 modelType 사용
+              orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
+              width: actions.tagWidth || 0,
+              height: actions.tagHeight || 0,
+              tagGuid: actions.tagGuid,
+              divisionsType: 3,
+              onComplete: (newLayout) => {
+                console.log('New layout created:', newLayout);
+                // TODO: 여기서 부모 컴포넌트에 새로운 레이아웃 전달
+                onClose();
+              }
+            });
           }
-        });
-      }
-    },
-    { type: 'separator' as const },
-    { label: 'Add a Soldout', onClick: () => console.log('Add Soldout:', actions?.tagName) },
-    { label: 'Add a Storage Box', onClick: () => console.log('Add Storage Box:', actions?.tagName) }
-  ];
+        },
+        { 
+          label: 'Add a 4 Divisions',
+          onClick: () => {
+            if (!actions?.tagName) return;
+            handleAddDivisions({
+              tagName: actions.tagName,
+              model: actions.modelType || ModelType.M21, // 전달받은 modelType 사용
+              orientation: isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape,
+              width: actions.tagWidth || 0,
+              height: actions.tagHeight || 0,
+              tagGuid: actions.tagGuid,
+              divisionsType: 4,
+              onComplete: (newLayout) => {
+                console.log('New layout created:', newLayout);
+                // TODO: 여기서 부모 컴포넌트에 새로운 레이아웃 전달
+                onClose();
+              }
+            });
+          }
+        },
+        { type: 'separator' as const },
+        { label: 'Add a Soldout', onClick: () => console.log('Add Soldout:', actions?.tagName) },
+        { label: 'Add a Storage Box', onClick: () => console.log('Add Storage Box:', actions?.tagName) }
+      ];
 
   React.useEffect(() => {
     const handleClick = () => onClose();

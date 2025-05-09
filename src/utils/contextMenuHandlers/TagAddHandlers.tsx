@@ -1,7 +1,7 @@
 import { TLayout, ModelType, OrientationType, DirectionType } from '../../types';
 import { TemplateType, getDefaultTValue } from '../../types/TemplateEnum';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import ContextMenuPopup from '../../components/Popup/ContextMenuPopup/ContextMenuPopup';
 import { uniqueCode } from '../commonUtils';
 
@@ -22,35 +22,41 @@ export const handleAddPage1 = async ({
   width,
   height,
   onComplete,
-  tagGuid  // GUID 파라미터 추가
-}: AddPageParams) => {
-  const newName = await openNamePopup(tagName + "_Page1");
+  tagGuid,
+  parentHasChildren = false
+}: AddPageParams & { parentHasChildren?: boolean }) => {
+  // 1. 기본 이름 생성 (모델명_방향_)
+  let baseName = `${tagName}_${orientation === 0 ? 'Landscape' : 'Portrait'}_`;
+  const newName = await openNamePopup(baseName + 'Page1');
   if (!newName) return;
 
+  // 2. TLayout 생성 (부모 템플릿은 항상 TValue: '0')
   const newLayout: TLayout = {
     Guid: tagGuid || uniqueCode(),
     Name: newName,
     Model: model,
-    DisplayName: newName, 
-    Bookmark: false,
+    Orientation: orientation,
     Width: width,
     Height: height,
-    Orientation: orientation,
-    Direction: DirectionType.Default,
-    Upsidedown: false,
+    TWidth: width,
+    THeight: height,
+    Direction: 0,
     Column: 1,
     Row: 1,
     BGColor: 'White',
-    TWidth: width,
-    THeight: height,
-    Default: false,
-    TType: TemplateType.Reserved,
-    TValue: '1',
-    PValue: '1',
+    Upsidedown: false,
+    TType: 'Normal',
+    TValue: '0', // 부모 템플릿은 항상 '0'
+    Default: !parentHasChildren,
+    Bookmark: !parentHasChildren,
+    DisplayName: !parentHasChildren ? 'Default' : '',
     Objects: [],
-    ParentName: tagName // 부모 태그와의 연결을 위한 속성 추가
+    PValue: '',
+    ModelName: tagName
   };
 
+console.log('[handleAddPage1] newLayout:', newLayout);
+  // 3. 콜백으로 전달
   onComplete(newLayout);
 };
 
@@ -91,13 +97,50 @@ export const handleAddDivisions = async ({
     TWidth: width,
     THeight: height,
     Default: false,
-    TType: type,
+    TType: TemplateType.Normal,
     TValue: getDefaultTValue(type),
     PValue: getDefaultTValue(type),
     Objects: [],
     ParentTag: tagName,
   };
 
+  console.log('[Divisions New Layout]:', newLayout); // 디버깅을 위한 로그 추가
+
+  onComplete(newLayout);
+};
+
+export const handleAddPop = async ({
+  parentGuid,
+  onComplete
+}: {
+  parentGuid: string;
+  onComplete: (newLayout: TLayout) => void;
+}) => {
+  const newName = await openNamePopup('POP');
+  if (!newName) return;
+  const newLayout: TLayout = {
+    Guid: uniqueCode(),
+    Name: newName,
+    ParentGuid: parentGuid,
+    TType: 'POP',
+    TValue: '1',
+    DisplayName: newName,
+    Bookmark: false,
+    Model: 0,
+    Width: 0,
+    Height: 0,
+    Orientation: 0,
+    Direction: 0,
+    Upsidedown: false,
+    Column: 1,
+    Row: 1,
+    BGColor: 'White',
+    TWidth: 0,
+    THeight: 0,
+    Default: false,
+    PValue: '',
+    Objects: []
+  };
   onComplete(newLayout);
 };
 
@@ -108,36 +151,29 @@ const openNamePopup = (defaultName: string): Promise<string | null> => {
 
     const cleanup = () => {
       try {
-        // 컴포넌트 언마운트
-        ReactDOM.unmountComponentAtNode(popupRoot);
-        // popupRoot가 실제로 document.body의 자식인지 확인
-        if (document.body.contains(popupRoot)) {
-          document.body.removeChild(popupRoot);
-        }
-      } catch (error) {
-        console.error('Cleanup error:', error);
-      }
+        root.unmount();
+        document.body.removeChild(popupRoot);
+      } catch {}
     };
 
-    const handleConfirm = (value: string) => {
+    const handleOk = (name: string) => {
+      resolve(name);
       cleanup();
-      resolve(value);
     };
-
-    const handleClose = () => {
-      cleanup();
+    const handleCancel = () => {
       resolve(null);
+      cleanup();
     };
 
-    ReactDOM.render(
+    const root = createRoot(popupRoot);
+    root.render(
       <ContextMenuPopup
         isOpen={true}
-        onClose={handleClose}
-        onConfirm={handleConfirm}
+        onClose={handleCancel}
+        onConfirm={handleOk}
         defaultValue={defaultName}
         title="Input page1 name"
-      />,
-      popupRoot
+      />
     );
   });
 };

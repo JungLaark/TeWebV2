@@ -28,6 +28,8 @@ import { setAvailableTags, setSelectedTags } from '../../store/features/selected
 import { setBasicMatches } from '../../store/features/templateSlice';
 import { ModelTypeDescription } from '../../types/TLayout';
 import AlertDialog from '../../components/Popup/CommonPopup/AlertDialog';
+import tagList from '../../types/tagList'; // 서버에서 Load 버튼을 눌렀을 때 전체 태그 리스트로 availableTags를 고정
+import { normalizeTemplate } from '../../utils/normalizeTemplate';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -59,7 +61,7 @@ const Dashboard: React.FC = () => {
         const res = await fetchTemplateData();
         console.log('[서버에서 받아온 res]:', res);
         // 응답 구조에 맞게 데이터 추출
-        const templates = res?.data?.[0]?.Templates || [];
+        const templates = (res?.data?.[0]?.Templates || []).map(normalizeTemplate);
         const matches = res?.data?.[0]?.Matches?.Basic || [];
         console.log('[서버에서 받아온 templates]:', templates);
 
@@ -86,9 +88,9 @@ const Dashboard: React.FC = () => {
           setSelectedObjectIds([]);
         }
 
-        console.log('currentObjects:', currentObjects);
-        console.log('selectedTag:', selectedTag);
-        console.log('tagObjects:', tagObjects);
+        console.log('[currentObjects]:', currentObjects);
+        console.log('[selectedTag]:', selectedTag);
+        console.log('[tagObjects]:', tagObjects);
 
         setAlertMessage('Core/ESN에서 템플릿을 불러왔습니다.');
         setIsAlertOpen(true);
@@ -368,7 +370,15 @@ const Dashboard: React.FC = () => {
   };
 
   const handleAddSubTag = (parentTagName: string, newLayout: TLayout) => {
+    console.log('[handleAddSubTag] before:', templateState.templates);
     dispatch(setTemplates([...templateState.templates, newLayout]));
+    // 새로 추가된 템플릿의 width/height가 selectedTags에 없으면 추가
+    if (!selectedTags.some(tag => tag.width === newLayout.Width && tag.height === newLayout.Height)) {
+      dispatch(setSelectedTags([
+        ...selectedTags,
+        { name: newLayout.Name, width: newLayout.Width, height: newLayout.Height }
+      ]));
+    }
     setSelectedTag(newLayout);
     setSelectedObject(null);
     setSelectedObjectIds([]);
@@ -381,30 +391,29 @@ const Dashboard: React.FC = () => {
     try {
       dispatch(setLoading(true));
       const res = await fetchTemplateData();
-      const templates = res?.data?.[0]?.Templates || [];
+      //const templates = res?.data?.[0]?.Templates || [];
+      const templates = (res?.data?.[0]?.Templates || []).map(normalizeTemplate);
       const matches = res?.data?.[0]?.Matches?.Basic || [];
 
       dispatch(setTemplates(templates));
       dispatch(setBasicMatches(matches));
 
-      console.log('[Dashboard] 서버에서 받아온 templates:', templates);
-
       // tagObjects 동기화 후 selectedTag/currentObjects 세팅
       templates.forEach(t => {
-        console.log('[서버에서 받아온 objects]', t.Name, t.Objects); // ← 여기!
         dispatch(updateTagObjects({
           tagName: `${t.Guid}__${t.Name}`,
           objects: t.Objects || []
         }));
       });
 
-      // TagList/selectedTagsSlice 동기화
+      // availableTags는 항상 전체 tagList로 고정
+      dispatch(setAvailableTags(tagList));
+      // selectedTags만 서버 데이터에 맞게 갱신
       const tagArr = templates.map(t => ({
-        name: ModelTypeDescription[t.Model], // ModelTypeDescription 값으로 name 세팅
+        name: ModelTypeDescription[t.Model],
         width: t.Width,
         height: t.Height
       }));
-      dispatch(setAvailableTags(tagArr));
       dispatch(setSelectedTags(tagArr));
 
       // tagObjects 동기화가 완료된 후 selectedTag/currentObjects 세팅을 보장하기 위해 setTimeout 사용

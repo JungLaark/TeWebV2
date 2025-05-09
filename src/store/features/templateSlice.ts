@@ -21,10 +21,9 @@ const tLayoutList: TLayout[] = tagList.map(tag => ({
   TWidth: tag.width,
   THeight: tag.height,
   Default: false,
-  TType: 'Normal',
+  TType: TemplateEnum.Normal,
   TValue: '',
   PValue: '',
-  TemplateType: TemplateEnum.Normal,
   Objects: [],
 }));
 

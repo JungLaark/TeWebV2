@@ -5,6 +5,8 @@ import { RootState } from '../../store';
 import './Navbar.css';
 import { ModelTypeDescription } from '../../types/TLayout';
 import { useContextMenu } from '../ContextMenu/ContextMenuProvider';
+import { Tag } from '../../types/tagList';
+import { isPortrait } from '../../utils/orientationUtils';
 
 interface TagListProps {
   onSelectTag: (tag: TLayout) => void;
@@ -36,12 +38,12 @@ function buildTemplateTree(templates: TLayout[]): TreeNode[] {
   });
 
   // 2. GUID별 부모/자식 트리 구성
-  const guidMap: Record<string, { parents: TLayout[], children: { [parentName: string]: TLayout[] } }> = {};
+  const guidMap: Record<string, { parents: TLayout[], children: { [parentKey: string]: TLayout[] } }> = {};
   templates.forEach(tpl => {
     if (!guidMap[tpl.Guid]) {
       guidMap[tpl.Guid] = { parents: [], children: {} };
     }
-    // 부모노드 조건
+    // 부모노드 조건: TType이 Normal/MultiFacing/TripleFacing/QuadFacing 등
     if (
       (tpl.TType === 'Normal' && tpl.TValue === '0') ||
       tpl.TType === 'MultiFacing' ||
@@ -49,7 +51,9 @@ function buildTemplateTree(templates: TLayout[]): TreeNode[] {
       tpl.TType === 'QuadFacing'
     ) {
       guidMap[tpl.Guid].parents.push(tpl);
-      guidMap[tpl.Guid].children[tpl.Name] = [];
+      // 부모 key는 Winform 방식과 동일하게 Guid_TType_TValue
+      const parentKey = `${tpl.Guid}_${tpl.TType}_${tpl.TValue}`;
+      guidMap[tpl.Guid].children[parentKey] = [];
     }
   });
   // 자식노드(Promotion, Reserved) 분배
@@ -59,8 +63,10 @@ function buildTemplateTree(templates: TLayout[]): TreeNode[] {
       (tpl.TType === 'Reserved' && tpl.TValue === '1')
     ) {
       if (guidMap[tpl.Guid]) {
+        // Promotion/Reserved는 같은 Guid의 모든 부모에 children으로 추가
         guidMap[tpl.Guid].parents.forEach(parent => {
-          guidMap[tpl.Guid].children[parent.Name].push(tpl);
+          const parentKey = `${parent.Guid}_${parent.TType}_${parent.TValue}`;
+          guidMap[tpl.Guid].children[parentKey].push(tpl);
         });
       }
     }
@@ -79,12 +85,13 @@ function buildTemplateTree(templates: TLayout[]): TreeNode[] {
       group.parents.forEach(parentTpl => {
         if (`${parentTpl.Model}` !== modelNode.id) return;
         const dir = parentTpl.Direction === 1 ? 1 : 0; // DirectionType이 number라면 문제 없음
+        // 트리 렌더링 시 key를 반드시 고유하게!
         const parentNode: TreeNode = {
-          id: parentTpl.Guid + '_' + parentTpl.Name,
+          id: `${parentTpl.Guid}_${parentTpl.TType}_${parentTpl.TValue}`,
           name: `${parentTpl.TType} (${parentTpl.Name})`,
           data: parentTpl,
-          children: (group.children[parentTpl.Name] || []).map(childTpl => ({
-            id: childTpl.Guid + '_' + childTpl.Name,
+          children: (group.children[`${parentTpl.Guid}_${parentTpl.TType}_${parentTpl.TValue}`] || []).map(childTpl => ({
+            id: `${childTpl.Guid}_${childTpl.TType}_${childTpl.TValue}`,
             name: childTpl.Name,
             data: childTpl
           }))
@@ -102,6 +109,102 @@ function buildTemplateTree(templates: TLayout[]): TreeNode[] {
   return Object.values(modelMap);
 }
 
+// WinForm 방식 트리 구조 생성 (Guid로만 그룹핑)
+function buildWinformStyleTree(templates: TLayout[]): TreeNode[] {
+  const colorCategories = ['4Color', '3Color', '2Color'];
+  const getColorCategory = (name: string) => {
+    if (name.includes('R') && name.includes('Y')) return '4Color';
+    if (name.includes('R')) return '3Color';
+    return '2Color';
+  };
+
+  // Orientation 값을 숫자로 강제 변환
+  const getOrientationValue = (val: any) => {
+    if (val === 0 || val === 'Landscape') return 0;
+    if (val === 1 || val === 'Portrait') return 1;
+    return -1;
+  };
+
+  // 색상 그룹 노드 생성
+  const colorMap: Record<string, TreeNode> = {};
+  colorCategories.forEach(color => {
+    colorMap[color] = { id: color, name: color, children: [] };
+  });
+
+  // 모델별 그룹핑 (Width/Height/Model 기준)
+  const modelMap: Record<string, { color: string, width: number, height: number, model: number, templates: TLayout[] }> = {};
+  templates.forEach(tpl => {
+    const color = getColorCategory(tpl.Name || tpl.DisplayName || '');
+    const key = `${tpl.Width}_${tpl.Height}_${tpl.Model}`;
+    if (!modelMap[key]) {
+      modelMap[key] = { color, width: tpl.Width, height: tpl.Height, model: tpl.Model, templates: [] };
+    }
+    modelMap[key].templates.push(tpl);
+  });
+
+  // 모델 노드 생성
+  Object.values(modelMap).forEach(({ color, width, height, model, templates }) => {
+    const modelNodeId = `${width}_${height}_${model}`;
+    const modelNode: TreeNode = {
+      id: modelNodeId,
+      name: `${width}x${height}`,
+      data: { Width: width, Height: height, Model: model } as any,
+      children: []
+    };
+    // 방향별(가로/세로) 노드
+    const directions = [
+      { key: 'landscape', name: '가로', value: 0 },
+      { key: 'portrait', name: '세로', value: 1 }
+    ];
+
+    console.log('[트리] 모델노드 생성:', modelNodeId, templates);
+
+    directions.forEach(dir => {
+      // 해당 방향 템플릿만 추출 (Orientation 값을 숫자로 변환해서 비교)
+      const directionTemplates = templates.filter(tpl => getOrientationValue(tpl.Orientation) === dir.value);
+      if (directionTemplates.length === 0) return;
+      // 부모 템플릿(최상위)만 추출: TType이 Normal/MultiFacing/TripleFacing/QuadFacing 등
+      const parentTemplates = directionTemplates.filter(tpl =>
+        (tpl.TType === 'Normal' && tpl.TValue === '0') ||
+        tpl.TType === 'MultiFacing' ||
+        tpl.TType === 'TripleFacing' ||
+        tpl.TType === 'QuadFacing'
+      );
+      // 자식 템플릿: Promotion, Reserved 등
+      const childTemplates = directionTemplates.filter(tpl =>
+        tpl.TType === 'Promotion' || (tpl.TType === 'Reserved' && tpl.TValue === '1')
+      );
+      // 부모별로 자식 매핑
+      const directionChildren: TreeNode[] = parentTemplates.map(parentTpl => {
+        // 해당 부모와 Guid가 같은 자식만 children으로
+        const children = childTemplates.filter(childTpl => childTpl.Guid === parentTpl.Guid).map(childTpl => ({
+          id: `${childTpl.Guid}_${childTpl.TType}_${childTpl.TValue}`,
+          name: childTpl.Name,
+          data: childTpl,
+          children: []
+        }));
+        return {
+          id: `${parentTpl.Guid}_${parentTpl.TType}_${parentTpl.TValue}`,
+          name: parentTpl.Name,
+          data: parentTpl,
+          children
+        };
+      });
+      // 방향 노드 생성 및 추가
+      const directionNode = {
+        id: `${modelNodeId}_${dir.key}`,
+        name: dir.name,
+        children: directionChildren
+      };
+      modelNode.children!.push(directionNode);
+    });
+    // 색상 그룹에 모델 노드 추가
+    colorMap[color].children!.push(modelNode);
+  });
+
+  return colorCategories.map(color => colorMap[color]).filter(node => node.children && node.children.length > 0);
+}
+
 // 트리 렌더링 함수 (들여쓰기 기반, 아코디언 지원)
 function renderTree(
   nodes: TreeNode[],
@@ -110,21 +213,15 @@ function renderTree(
   depth = 0,
   openMap: Record<string, boolean> = {},
   toggleNode?: (id: string) => void,
-  showContextMenu?: (x: number, y: number, actions: import('../ContextMenu/ContextMenuProvider').ContextMenuState['actions']) => void,
-  handleAddSubTag?: (parentTagName: string, newLayout: TLayout) => void
+  showContextMenu?: (x: number, y: number, actions: any) => void,
+  handleAddSubTag?: (parentTagName: string, newLayout: TLayout) => void,
+  parentNode?: TreeNode // 상위 노드 정보 추가
 ) {
   return nodes.map(node => {
-    const isDirectionGroup = node.name === '세로모드' || node.name === '가로모드';
-    if (isDirectionGroup) {
-      return (
-        <div key={node.id} className="direction-group">
-          <div className="direction-group-title">{node.name}</div>
-          {node.children && renderTree(node.children, onSelectTag, selectedTag, depth + 1, openMap, toggleNode, showContextMenu, handleAddSubTag)}
-        </div>
-      );
-    }
+    console.log('[TagList] renderTree node:', node);
     const isParent = node.children && node.children.length > 0;
-    const isOpen = openMap[node.id] !== false; // 기본은 열림
+    const isOpen = openMap[node.id] !== false;
+    const isDirectionNode = node.name === '가로' || node.name === '세로';
     return (
       <div key={node.id} style={{ paddingLeft: depth === 0 ? 0 : 10 }}>
         <div
@@ -132,14 +229,35 @@ function renderTree(
           onClick={() => { if (node.data) onSelectTag(node.data); }}
           onContextMenu={e => {
             e.preventDefault();
-            if (node.data && showContextMenu) {
+
+            // 방향 정보 명확히 전달 (가로: 0, 세로: 1)
+            const orientation = node.name === '가로' ? 0 : node.name === '세로' ? 1 : undefined;
+
+            if (isDirectionNode && showContextMenu && parentNode) {
+              // 상위(모델) 노드 정보에서 tagName, width, height, modelType 추출 (width/height 보완)
+              const width = parentNode.data?.Width;
+              const height = parentNode.data?.Height;
+
+              showContextMenu(e.clientX, e.clientY, {
+                direction: node.name,
+                tagName: parentNode.name,
+                tagWidth: width,
+                tagHeight: height,
+                modelType: parentNode.data?.Model,
+                orientation, // 명확히 전달
+                handleAddSubTag
+              });
+            } else if (node.data && showContextMenu) {
               showContextMenu(e.clientX, e.clientY, {
                 tagName: node.data.Name,
-                tagWidth: node.data.Width,
-                tagHeight: node.data.Height,
+                tagWidth: node.data.Width ?? parentNode?.data?.Width ?? 0,
+                tagHeight: node.data.Height ?? parentNode?.data?.Height ?? 0,
                 tagGuid: node.data.Guid,
-                modelType: node.data.Model,
-                onAddSubTag: handleAddSubTag // 전달
+                modelType: node.data.Model ?? parentNode?.data?.Model ?? 0,
+                tType: node.data.TType, // Promotion 여부 전달
+                orientation: node.data.Orientation ?? undefined,
+                onAddPop: handleAddSubTag, // POP 추가 핸들러 (실제 구현에 맞게 연결)
+                onAddSubTag: handleAddSubTag
               });
             }
           }}
@@ -160,7 +278,7 @@ function renderTree(
           )}
         </div>
         {isParent && isOpen && node.children && node.children.length > 0 &&
-          renderTree(node.children, onSelectTag, selectedTag, depth + 1, openMap, toggleNode, showContextMenu, handleAddSubTag)
+          renderTree(node.children, onSelectTag, selectedTag, depth + 1, openMap, toggleNode, showContextMenu, handleAddSubTag, (node.name === '가로' || node.name === '세로') ? parentNode : node)
         }
       </div>
     );
@@ -168,24 +286,23 @@ function renderTree(
 }
 
 const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, handleAddSubTag }) => {
-  // 선택된 태그만 가져옴
+  // TagList에서 selectedTags는 템플릿 필터링에만 사용, 트리 생성은 TLayout만 사용
   const selectedTags = useSelector((state: RootState) => state.selectedTags.selectedTags);
-  // 전체 TLayout 목록 가져오기 (templateSlice의 templates)
   const tLayoutList = useSelector((state: RootState) => state.template.templates);
-  
-  
-  console.log('[TagList] tLayoutList:', tLayoutList);
-  console.log('[TagList] selectedTags:', selectedTags);
 
-  // 선택된 태그만 필터링 (ModelTypeDescription[tpl.Model]과 tag.name 비교)
-  const filteredList = tLayoutList.filter(tpl =>
-    selectedTags.some(tag => tag.name === ModelTypeDescription[tpl.Model])
+  // selectedTags의 width/height와 일치하는 템플릿만 필터링
+  const filteredTemplates = tLayoutList.filter(tpl =>
+    selectedTags.some(tag => tpl.Width === tag.width && tpl.Height === tag.height)
   );
+  
+  
 
-  console.log('[TagList] filteredList:', filteredList);
 
-  // 트리 구조로 변환
-  const tree = buildTemplateTree(filteredList);
+  console.log('[TagList] buildWinformStyleTree input:', filteredTemplates);
+  // WinForm 스타일 트리 생성 (이제 filteredTemplates만 사용)
+  const tree = buildWinformStyleTree(filteredTemplates);
+
+  console.log('[TagList] tree:', tree);
 
   // 아코디언 상태 관리
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
@@ -209,7 +326,7 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, handleAddSu
         if (node.children && node.children.length > 0) {
           allParentIds.push(node.id);
           collectParentIds(node.children);
-        }
+        };
       });
     };
     collectParentIds(tree);
@@ -234,6 +351,6 @@ const TagList: React.FC<TagListProps> = ({ onSelectTag, selectedTag, handleAddSu
       )}
     </div>
   );
-};
+  };
 
 export default TagList;

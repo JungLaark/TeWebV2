@@ -19,59 +19,69 @@ const ManageTagsPopup: React.FC<ManageTagsPopupProps> = ({ isOpen, onClose, orie
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState<'2Color' | '3Color' | '4Color'>('4Color');
 
+  console.log('[ManageTagsPopup] availableTags:', availableTags);
+  console.log('[ManageTagsPopup] selectedTags:', selectedTags);
+
+
   useEffect(() => {
     if (isOpen) {
       setTagOrientations({});
     }
   }, [isOpen, orientation]);
 
-  const isSelected = (tagName: string) => selectedTags.some(tag => tag.name === tagName);
+// 1. 모델 단위로 중복 제거
+const uniqueAvailableTags = Array.from(
+  new Map(
+    availableTags.map(tag => [`${tag.name}_${tag.width}_${tag.height}`, tag])
+  ).values()
+);
 
-  const handleToggleTag = (tagName: string) => {
-    dispatch(toggleSelectedTag(tagName));
-  };
+// 2. 선택 여부 체크 (모델 단위)
+const isSelected = (name: string, width: number, height: number) =>
+  selectedTags.some(tag => tag.name === name && tag.width === width && tag.height === height);
 
-  const handleOrientationChange = (tagName: string, orientation: 'horizontal' | 'vertical') => {
-    setTagOrientations(prev => ({ ...prev, [tagName]: orientation }));
-  };
+// 3. 선택/해제 핸들러 (모델 단위)
+const handleToggleTag = (name: string, width: number, height: number) => {
+  dispatch(toggleSelectedTag({ name, width, height }));
+};
 
-  // 태그 분류 함수
-  const categorizeTag = (name: string) => {
-    if (name.includes('R') && name.includes('Y')) return '4Color';
-    if (name.includes('R')) return '3Color';
-    return '2Color';
-  };
+// 태그 분류 함수
+const categorizeTag = (name: string) => {
+  if (name.includes('R') && name.includes('Y')) return '4Color';
+  if (name.includes('R')) return '3Color';
+  return '2Color';
+};
 
-  // 검색된 태그만 필터링
-  const filteredAvailableTags = searchText.trim() === ''
-    ? availableTags
-    : availableTags.filter(tag => tag.name.toLowerCase().includes(searchText.toLowerCase()));
+// 4. 검색된 태그만 필터링 (uniqueAvailableTags 사용)
+const filteredAvailableTags = searchText.trim() === ''
+  ? uniqueAvailableTags
+  : uniqueAvailableTags.filter(tag => tag.name.toLowerCase().includes(searchText.toLowerCase()));
 
-  // 카테고리별로 태그 그룹화 (검색 결과 기준)
-  const categorizedTags: Record<string, typeof availableTags> = {
-    '2Color': [],
-    '3Color': [],
-    '4Color': [],
-  };
-  filteredAvailableTags.forEach(tag => {
-    const category = categorizeTag(tag.name);
-    categorizedTags[category].push(tag);
+// 5. 카테고리별로 태그 그룹화 (검색 결과 기준)
+const categorizedTags: Record<string, typeof uniqueAvailableTags> = {
+  '2Color': [],
+  '3Color': [],
+  '4Color': [],
+};
+filteredAvailableTags.forEach(tag => {
+  const category = categorizeTag(tag.name);
+  categorizedTags[category].push(tag);
+});
+
+// 탭 카테고리 배열
+const tabCategories: Array<'4Color' | '3Color' | '2Color'> = ['4Color', '3Color', '2Color'];
+
+// 6. 전체 선택/해제 핸들러 (uniqueAvailableTags 기준)
+const handleSelectAll = () => {
+  uniqueAvailableTags.forEach(tag => {
+    if (!isSelected(tag.name, tag.width, tag.height)) dispatch(toggleSelectedTag({ name: tag.name, width: tag.width, height: tag.height }));
   });
-
-  // 탭 카테고리 배열
-  const tabCategories: Array<'4Color' | '3Color' | '2Color'> = ['4Color', '3Color', '2Color'];
-
-  // 전체 선택/해제 핸들러
-  const handleSelectAll = () => {
-    availableTags.forEach(tag => {
-      if (!isSelected(tag.name)) dispatch(toggleSelectedTag(tag.name));
-    });
-  };
-  const handleDeselectAll = () => {
-    availableTags.forEach(tag => {
-      if (isSelected(tag.name)) dispatch(toggleSelectedTag(tag.name));
-    });
-  };
+};
+const handleDeselectAll = () => {
+  uniqueAvailableTags.forEach(tag => {
+    if (isSelected(tag.name, tag.width, tag.height)) dispatch(toggleSelectedTag({ name: tag.name, width: tag.width, height: tag.height }));
+  });
+};
 
   if (!isOpen) return null;
 
@@ -115,12 +125,12 @@ const ManageTagsPopup: React.FC<ManageTagsPopupProps> = ({ isOpen, onClose, orie
             <div className="manage-tags-empty">해당 카테고리에 태그가 없습니다.</div>
           ) : (
             categorizedTags[activeTab].map(tag => (
-              <div key={tag.name} className="manage-tags-tag-item">
+              <div key={`${tag.name}_${tag.width}_${tag.height}`} className="manage-tags-tag-item">
                 <label className="manage-tags-checkbox-label">
                   <input
                     type="checkbox"
-                    checked={isSelected(tag.name)}
-                    onChange={() => handleToggleTag(tag.name)}
+                    checked={isSelected(tag.name, tag.width, tag.height)}
+                    onChange={() => handleToggleTag(tag.name, tag.width, tag.height)}
                   />
                   <span className="manage-tags-tag-name">{tag.name}</span>
                 </label>

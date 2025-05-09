@@ -38,7 +38,7 @@ const selectedTagsSlice = createSlice({
       saveSelectedTagsToStorage(state.selectedTags);
     },
     addSelectedTag: (state, action: PayloadAction<Tag>) => {
-      const exists = state.selectedTags.find(tag => tag.name === action.payload.name);
+      const exists = state.selectedTags.find(tag => tag.width === action.payload.width && tag.height === action.payload.height && tag.guid === action.payload.guid);
       if (!exists) {
         state.selectedTags.push(action.payload);
         saveSelectedTagsToStorage(state.selectedTags);
@@ -48,12 +48,20 @@ const selectedTagsSlice = createSlice({
       state.selectedTags = state.selectedTags.filter(tag => tag.name !== action.payload);
       saveSelectedTagsToStorage(state.selectedTags);
     },
-    toggleSelectedTag: (state, action: PayloadAction<string>) => {
-      const tagIndex = state.selectedTags.findIndex(tag => tag.name === action.payload);
-      const tagToToggle = state.availableTags.find(tag => tag.name === action.payload);
-      
+    //Manage Tags 토글을 위한 액션 수정: guid 비교 제거, name/width/height만 비교
+    toggleSelectedTag: (state, action: PayloadAction<{ name: string; width: number; height: number; guid?: string }>) => {
+      const { name, width, height } = action.payload;
+      const tagIndex = state.selectedTags.findIndex(
+        tag => tag.width === width && tag.height === height && tag.name === name
+      );
+      const tagToToggle = state.availableTags.find(
+        tag => tag.width === width && tag.height === height && tag.name === name
+      );
+
       if (tagIndex >= 0) {
-        state.selectedTags = state.selectedTags.filter(tag => tag.name !== action.payload);
+        state.selectedTags = state.selectedTags.filter(
+          tag => !(tag.width === width && tag.height === height && tag.name === name)
+        );
       } else if (tagToToggle) {
         state.selectedTags.push(tagToToggle);
       }
