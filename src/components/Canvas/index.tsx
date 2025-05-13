@@ -470,9 +470,6 @@ const Canvas: React.FC<CanvasProps> = ({
         case 'ellipse':
           drawCircle(ctx, obj);
           break;
-        case 'triangle':
-          drawTriangle(ctx, obj);
-          break;
         case 'text':
           drawText(ctx, obj);
           break;
@@ -1072,46 +1069,7 @@ const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
-  // 삼각형 그리기 함수 추가
-  const drawTriangle = (ctx: CanvasRenderingContext2D, obj: TObject) => {
-    ctx.save();
-    
-    try {
-      // 회전 처리
-      if (obj.Rotation) {
-        const centerX = obj.PosX + obj.Width / 2;
-        const centerY = obj.PosY + obj.Height / 2;
-        ctx.translate(centerX, centerY);
-        ctx.rotate((obj.Rotation * Math.PI) / 180);
-        ctx.translate(-centerX, -centerY);
-      }
-
-      // 삼각형 경로 설정
-      ctx.beginPath();
-      ctx.moveTo(obj.PosX + obj.Width / 2, obj.PosY); // 상단 중앙
-      ctx.lineTo(obj.PosX + obj.Width, obj.PosY + obj.Height); // 우측 하단
-      ctx.lineTo(obj.PosX, obj.PosY + obj.Height); // 좌측 하단
-      ctx.closePath();
-
-      // 채우기 설정
-      if (obj.IsFilled) {
-        ctx.fillStyle = obj.FillColor;
-        ctx.fill();
-      }
-
-      // 테두리 그리기
-      if (obj.ShowBoarder) {
-        ctx.strokeStyle = obj.PenColor;
-        ctx.lineWidth = obj.PenWidth;
-        ctx.stroke();
-      }
-    } catch (error) {
-      console.error('Error drawing triangle:', error);
-    }
-
-    ctx.restore();
-  };
-
+  
   // 선 그리기 함수 추가
   const drawLine = (ctx: CanvasRenderingContext2D, obj: TObject) => {
     ctx.save();

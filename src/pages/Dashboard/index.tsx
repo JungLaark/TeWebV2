@@ -50,6 +50,7 @@ const Dashboard: React.FC = () => {
   const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
   const templateState = useSelector((state: RootState) => state.template);
   const isLoading = useSelector((state: RootState) => state.template.isLoading);
+  const selectedTags = useSelector((state: RootState) => state.selectedTags.selectedTags);
 
   const [alertMessage, setAlertMessage] = useState('');
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -71,7 +72,7 @@ const Dashboard: React.FC = () => {
         // tagObjectsSlice도 동기화
         templates.forEach(t => {
           dispatch(updateTagObjects({
-            tagName: `${t.Guid}__${t.Name}`,
+            tagName: getTagKey(t),
             objects: t.Objects || []
           }));
         });
@@ -131,15 +132,17 @@ const Dashboard: React.FC = () => {
   // selectedTag가 바뀔 때만 currentObjects를 동기화 (tagObjects 의존성 제거)
   useEffect(() => {
     if (selectedTag) {
+      const tagKey = getTagKey(selectedTag);
       const newObjects =
+        (tagObjects[tagKey] && [...tagObjects[tagKey]]) ||
         (selectedTag.Objects && [...selectedTag.Objects]) ||
         [];
       setCurrentObjects(newObjects);
     }
-  }, [selectedTag]);
+  }, [selectedTag, tagObjects]);
 
-  // 태그의 유니크 키 생성 함수
-  const getTagKey = (tag: TLayout) => `${tag.Guid}__${tag.Name}`;
+  // 태그의 유니크 키 생성 함수 (WinForm 방식)
+  const getTagKey = (tag: TLayout) => `${tag.Guid}_${tag.TType}_${tag.TValue}`;
 
   const handleTagSelect = (tag: TLayout) => {
     if (selectedTag) {
@@ -369,6 +372,8 @@ const Dashboard: React.FC = () => {
     setIsTagPropertyModalOpen(false);
   };
 
+  
+
   const handleAddSubTag = (parentTagName: string, newLayout: TLayout) => {
     console.log('[handleAddSubTag] before:', templateState.templates);
     dispatch(setTemplates([...templateState.templates, newLayout]));
@@ -401,7 +406,7 @@ const Dashboard: React.FC = () => {
       // tagObjects 동기화 후 selectedTag/currentObjects 세팅
       templates.forEach(t => {
         dispatch(updateTagObjects({
-          tagName: `${t.Guid}__${t.Name}`,
+          tagName: getTagKey(t),
           objects: t.Objects || []
         }));
       });
@@ -449,7 +454,7 @@ const Dashboard: React.FC = () => {
       const fixNumber = (v: any) => (typeof v === 'number' && isFinite(v) ? Math.round(Math.max(0, v)) : 0);
 
       const syncedTemplates = templateState.templates.map(t => {
-        const tagKey = `${t.Guid}__${t.Name}`;
+        const tagKey = getTagKey(t);
         const objects = (tagObjects[tagKey] ?? t.Objects).map(obj => ({
           ...obj,
           PosX: fixNumber(obj.PosX),
@@ -555,6 +560,8 @@ const Dashboard: React.FC = () => {
                       Objects: updatedObjects
                     });
                     // Redux 동기화는 드래그 종료 시에만 수행
+                    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
+                    dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
                   }}
                   onObjectSelect={handleObjectSelect}
                   selectedObjectIds={selectedObjectIds}

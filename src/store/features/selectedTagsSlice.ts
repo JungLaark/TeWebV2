@@ -54,16 +54,13 @@ const selectedTagsSlice = createSlice({
       const tagIndex = state.selectedTags.findIndex(
         tag => tag.width === width && tag.height === height && tag.name === name
       );
-      const tagToToggle = state.availableTags.find(
-        tag => tag.width === width && tag.height === height && tag.name === name
-      );
-
       if (tagIndex >= 0) {
         state.selectedTags = state.selectedTags.filter(
           tag => !(tag.width === width && tag.height === height && tag.name === name)
         );
-      } else if (tagToToggle) {
-        state.selectedTags.push(tagToToggle);
+      } else {
+        // availableTags에 없어도 선택한 태그를 추가
+        state.selectedTags.push({ name, width, height });
       }
       saveSelectedTagsToStorage(state.selectedTags);
     },

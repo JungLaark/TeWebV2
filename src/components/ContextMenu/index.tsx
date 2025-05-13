@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModelType, OrientationType } from '../../types';
 import { isPortrait } from '../../utils/orientationUtils';
-import { handleAddPage1, handleAddDivisions, handleAddPop } from '../../utils/contextMenuHandlers/TagAddHandlers';
+import { handleAddPromotion, handleAddPage1, handleAddDivisions, handleAddPop } from '../../utils/contextMenuHandlers/TagAddHandlers';
 import './ContextMenu.css';
 
 interface ContextMenuProps {
@@ -16,6 +16,8 @@ interface ContextMenuProps {
     modelType?: ModelType;  // ModelType 추가
     orientation?: number; // orientation 추가
     onAddSubTag?: (parentTagName: string, newLayout: any) => void; // 새로운 레이아웃 전달
+    parentLayout?: any; // 부모 레이아웃
+    allTemplates?: any[]; // 모든 템플릿
   };
 }
 
@@ -36,6 +38,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions }) => 
   }, [y]);
 
   const isPromotion = actions?.TType === 'Promotion' || actions?.data?.TType === 'Promotion';
+  const isParentTemplate = actions?.tType === 'Normal' && !isPromotion;
 
   const menuItems = isPromotion
     ? [
@@ -53,7 +56,43 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions }) => 
           }
         }
       ]
-    : [
+    : isParentTemplate
+      ? [
+          {
+            label: 'Add a Promotion',
+            onClick: () => {
+              // Promotion 추가 핸들러 구현 필요
+              // handleAddPromotion 함수가 있다면 여기에 연결
+              // 예시: handleAddPromotion({ ... })
+              // 실제 구현 필요
+              if(!actions?.parentLayout || !actions?.allTemplates) return;
+              handleAddPromotion({
+                parentLayout: actions.parentLayout,
+                allTemplates: actions.allTemplates,
+                onComplete: (newLayout) => {
+                  if(actions.onAddSubTag){
+                    actions.onAddSubTag(actions.tagName, newLayout);
+                    onClose();
+                  }
+                }
+              });
+            }
+          },
+          {
+            label: 'Add a POP',
+            onClick: () => {
+              if (!actions?.tagGuid) return;
+              handleAddPop({
+                parentGuid: actions.tagGuid,
+                onComplete: (newPopLayout) => {
+                  if (actions.onAddPop) actions.onAddPop(actions.tagName, newPopLayout);
+                  onClose();
+                }
+              });
+            }
+          }
+        ]
+      : [
         { 
           label: 'Add a Page 1', 
           onClick: () => {
@@ -66,8 +105,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions }) => 
               orientation: actions.orientation ?? (isPortrait(actions.modelType || ModelType.M21) ? OrientationType.Portrait : OrientationType.Landscape),
               width: actions.tagWidth || 0,
               height: actions.tagHeight || 0,
-              tagGuid: actions.tagGuid,
+              tagGuid: actions.tagGuid || '',
               onComplete: (newLayout) => {
+
+                console.log('[actions.onAddSubTag]:', actions.onAddSubTag);
+
                 if (actions.onAddSubTag) {
                   actions.onAddSubTag(actions.tagName, newLayout);
                 }
@@ -190,7 +232,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions }) => 
             className="context-menu-item"
             onClick={() => {
               item.onClick();
-              onClose();
+              //onClose();
             }}
           >
             <span>{item.label}</span>

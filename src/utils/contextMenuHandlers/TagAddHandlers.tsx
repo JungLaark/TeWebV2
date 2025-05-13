@@ -6,33 +6,33 @@ import ContextMenuPopup from '../../components/Popup/ContextMenuPopup/ContextMen
 import { uniqueCode } from '../commonUtils';
 
 interface AddPageParams {
-  tagName: string;
+  tagGuid: string; // tagName 대신 GUID만 사용
   model: ModelType;
   orientation: OrientationType;
   width: number;
   height: number;
   onComplete: (newLayout: TLayout) => void;
-  tagGuid?: string;  // GUID 파라미터 추가
+  // tagName은 UI 표시용으로만 필요할 때만 별도 전달
 }
 
 export const handleAddPage1 = async ({
-  tagName,
+  tagGuid,
   model,
   orientation,
   width,
   height,
   onComplete,
-  tagGuid,
-  parentHasChildren = false
-}: AddPageParams & { parentHasChildren?: boolean }) => {
+  parentHasChildren = false,
+  tagName // UI 표시용으로만 필요할 때만 전달
+}: AddPageParams & { parentHasChildren?: boolean; tagName?: string }) => {
   // 1. 기본 이름 생성 (모델명_방향_)
-  let baseName = `${tagName}_${orientation === 0 ? 'Landscape' : 'Portrait'}_`;
+  let baseName = `${tagName || tagGuid}_${orientation === 0 ? 'Landscape' : 'Portrait'}_`;
   const newName = await openNamePopup(baseName + 'Page1');
   if (!newName) return;
 
   // 2. TLayout 생성 (부모 템플릿은 항상 TValue: '0')
   const newLayout: TLayout = {
-    Guid: tagGuid || uniqueCode(),
+    Guid: uniqueCode(),
     Name: newName,
     Model: model,
     Orientation: orientation,
@@ -52,7 +52,7 @@ export const handleAddPage1 = async ({
     DisplayName: !parentHasChildren ? 'Default' : '',
     Objects: [],
     PValue: '',
-    ModelName: tagName
+    ModelName: tagGuid // tagName 대신 GUID 저장
   };
 
 console.log('[handleAddPage1] newLayout:', newLayout);
@@ -61,15 +61,15 @@ console.log('[handleAddPage1] newLayout:', newLayout);
 };
 
 export const handleAddDivisions = async ({
-  tagName,
+  tagGuid,
   model,
   orientation,
   width,
   height,
   onComplete,
-  tagGuid,
-  divisionsType
-}: AddPageParams & { divisionsType: 2 | 3 | 4 }) => {
+  divisionsType,
+  tagName // UI 표시용으로만 필요할 때만 전달
+}: AddPageParams & { divisionsType: 2 | 3 | 4; tagName?: string }) => {
   const templateTypes = {
     2: TemplateType.MultiFacing,
     3: TemplateType.TripleFacing,
@@ -77,11 +77,11 @@ export const handleAddDivisions = async ({
   };
 
   const type = templateTypes[divisionsType];
-  const newName = await openNamePopup(`${tagName}_${divisionsType}Divisions`);
+  const newName = await openNamePopup(`${tagName || tagGuid}_${divisionsType}Divisions`);
   if (!newName) return;
 
   const newLayout: TLayout = {
-    Guid: tagGuid || uniqueCode(),
+    Guid: uniqueCode(),
     Name: newName,
     Model: model,
     DisplayName: newName,
@@ -101,13 +101,58 @@ export const handleAddDivisions = async ({
     TValue: getDefaultTValue(type),
     PValue: getDefaultTValue(type),
     Objects: [],
-    ParentTag: tagName,
+    ParentTag: tagGuid // tagName 대신 GUID 저장
   };
 
   console.log('[Divisions New Layout]:', newLayout); // 디버깅을 위한 로그 추가
 
   onComplete(newLayout);
 };
+
+export const handleAddPromotion = async ({
+  parentLayout,
+  allTemplates, //전체 템플릿 배열
+  onComplete,
+}:{
+  parentLayout: TLayout;
+  allTemplates: TLayout[]; // 전체 템플릿 배열
+  onComplete: (newLayout: TLayout) => void;
+}) => {
+  const newName = await openNamePopup(parentLayout.Name + '_Promotion');
+  if(!newName) return;
+
+  const promotionChildren = allTemplates.filter(
+    t => t.Guid === parentLayout.Guid && t.TType === 'Promotion');
+  
+  let maxTValue = 0;
+
+  promotionChildren.forEach( t => {
+    const value = parseInt(t.TValue);
+    if(!isNaN(value) && value > maxTValue)
+      maxTValue = value;
+  });
+
+  const newTValue = (maxTValue + 1).toString();
+
+  const newLayout: TLayout = {
+    ...parentLayout,
+    Guid: parentLayout.Guid,
+    Name: newName,
+    Model: parentLayout.Model,
+    Default: false,
+    TType: 'Promotion',
+    TValue: newTValue,
+    Direction: parentLayout.Direction,
+    Column: parentLayout.Column,
+    Row: parentLayout.Row,
+    Objects: []
+  }
+
+  onComplete(newLayout);
+  console.log('[handleAddPromotion] newLayout:', newLayout); // 디버깅을 위한 로그 추가
+}
+
+
 
 export const handleAddPop = async ({
   parentGuid,

@@ -269,10 +269,56 @@
   box-shadow: 0 4px 16px rgba(37,99,235,0.08);
 }
 
+.template-item.template-selected .font-bold,
+.template-item.template-selected {
+  color: #1e293b !important;
+}
+
 .template-item.template-normal:hover {
   background: #475569;
   border: 1.5px solid #64748b;
   box-shadow: 0 2px 12px rgba(100,116,139,0.10);
+}
+
+/* 색상 노드 */
+.template-item.color-node {
+  background: #fffbe6;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-bottom: 4px;
+  box-shadow: 0 1px 4px #eee;
+}
+
+/* 모델 노드 */
+.template-item.model-node {
+  background: #f0f4ff;
+  border-left: 4px solid #a3bffa;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+/* 방향 노드 */
+.template-item.direction-node {
+  background: #f8f9fa;
+  border-left: 4px solid #e2e8f0;
+  font-weight: normal;
+}
+
+/* 템플릿 노드 */
+.template-item.template-node {
+  background: #fff;
+  border-left: 4px solid #cbd5e1;
+  margin-bottom: 1px;
+  transition: background 0.2s;
+}
+.template-item.template-node:hover {
+  background: #e6f7ff;
+}
+.template-item.template-selected {
+  border-left: 4px solid #2563eb;
+  background: #dbeafe;
+  font-weight: bold;
 }
 
 /* 자식 템플릿 컨테이너 */

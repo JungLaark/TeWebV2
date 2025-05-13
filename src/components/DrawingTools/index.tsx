@@ -2,7 +2,6 @@ import React from 'react';
 import { 
   Square,
   Circle,
-  Triangle,
   Circle as Ellipse,
   Minus,
   Hexagon,
@@ -36,9 +35,6 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onAddShape, onAddText }) =>
       </button>
       <button onClick={() => handleShapeClick('ellipse')} className="toolbar-button" title="Circle">
         <Circle size={18} />
-      </button>
-      <button onClick={() => handleShapeClick('triangle')} className="toolbar-button" title="Triangle">
-        <Triangle size={18} />
       </button>
       <button onClick={() => handleShapeClick('ellipse')} className="toolbar-button" title="Ellipse">
         <Ellipse size={18} />

@@ -3,7 +3,7 @@ import { TLayout, ModelType, OrientationType, DirectionType, TemplateEnum } from
 import { CSVColumnMatch } from '../../types/CSVColumnMatch';
 import tagList from '../../types/tagList';
 
-// Tag[]를 TLayout[]으로 변환
+// Tag[]를 TLayout[]으로 변환 
 const tLayoutList: TLayout[] = tagList.map(tag => ({
   Guid: tag.name,
   Name: tag.name,
