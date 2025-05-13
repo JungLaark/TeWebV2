@@ -69,20 +69,21 @@ export const loginService = {
 
           console.log('response.data: ', response.data);
 
-          //const serverToken = response.data?.token || response.data?.access_token;
           const serverToken = response.data?.data?.[0]?.token;
           const serverResult = response.data?.result || 'success';
-          
+
+          // result가 'invalid_token'이면 로그인 실패 처리
+          if (serverResult === 'invalid_token') {
+            return {
+              success: false,
+              message: '아이디 또는 비밀번호가 올바르지 않습니다.'
+            };
+          }
           // 로컬 스토리지에 인증 정보 저장
           localStorage.setItem('isAuthenticated', 'true');
-          // Basic Auth를 사용하는 경우, 직접 Basic 토큰을 저장
-          //const basicToken = 'Basic ' + btoa(`${data.username}:${data.password}`);
-          const basicToken = 'Basic ' + btoa(`${data.username}:${data.password}`);
           localStorage.setItem('token', serverToken);
           localStorage.setItem('lastLoginTime', new Date().toISOString());
-          
           console.log('Login successful, redirecting to dashboard...');
-          
           return {
             success: true,
             token: serverToken,
@@ -112,52 +113,38 @@ export const loginService = {
         }
       } catch (proxyError) {
         console.error('Proxy request failed:', proxyError);
-        
         // 데모/테스트 목적으로 임시 로그인 성공 처리 (실제 서버 연결 불가 시)
-        if (data.username === 'admin' && data.password === 'esl') {
-          console.log('Using mock login response (for demo/testing)');
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('authToken', 'mock-token-for-demo');
-          localStorage.setItem('lastLoginTime', new Date().toISOString());
-          
-          return {
-            success: true,
-            token: 'mock-token-for-demo',
-            result: 'success'
-          };
-        }
-        
+        // if (data.username === 'admin' && data.password === 'esl') {
+        //   console.log('Using mock login response (for demo/testing)');
+        //   localStorage.setItem('isAuthenticated', 'true');
+        //   localStorage.setItem('authToken', 'mock-token-for-demo');
+        //   localStorage.setItem('lastLoginTime', new Date().toISOString());
+        //   return {
+        //     success: true,
+        //     token: 'mock-token-for-demo',
+        //     result: 'success'
+        //   };
+        // }
         // 실패 처리
+        let errorMessage = '서버에 연결할 수 없습니다';
+        if (typeof proxyError === 'object' && proxyError && 'message' in proxyError) {
+          errorMessage = (proxyError as any).message || errorMessage;
+        }
         return {
           success: false,
-          message: proxyError.message || '서버에 연결할 수 없습니다'
+          message: errorMessage
         };
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error);
-      if (error.response) {
-        console.error('Error response status:', error.response.status);
-        console.error('Error response data:', error.response.data);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const errObj = error as any;
+        console.error('Error response status:', errObj.response.status);
+        console.error('Error response data:', errObj.response.data);
       }
-      
-      // 테스트/데모 목적의 임시 로그인 허용
-      if (error.message?.includes('fetch') && 
-          data.username === 'admin' && data.password === 'esl') {
-        console.log('Allowing test login for admin/esl');
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('authToken', 'mock-token-for-testing');
-        localStorage.setItem('lastLoginTime', new Date().toISOString());
-        
-        return {
-          success: true,
-          token: 'mock-token-for-testing',
-          result: 'success'
-        };
-      }
-      
       return {
         success: false,
-        message: error.response?.data?.message || error.message || '로그인 중 오류가 발생했습니다'
+        message: (error && typeof error === 'object' && 'response' in error && (error as any).response?.data?.message) || (error as any).message || '로그인 중 오류가 발생했습니다'
       };
     }
   }

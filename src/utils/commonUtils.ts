@@ -1,21 +1,30 @@
 export const uniqueCode = (): string => {
-  const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const length = 10; // GUID 길이
-  let guid = '';
+  // WinForms와 동일한 characters 문자열
+  const characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:;<=>?@!#$%&()*+-[]^_abcdefghijklmnopqrstuvwxyz{|}~';
 
-  // 첫 번째 문자는 항상 알파벳
-  guid += characters[Math.floor(Math.random() * 52)]; // 0-51 사이의 인덱스 (알파벳만)
+  // .NET의 DateTime.UtcNow.Ticks에 해당하는 값 생성 (마이크로초 단위 시간)
+  const now = Date.now();
+  const perf =
+    typeof performance !== 'undefined' && performance.now
+      ? Math.floor(performance.now() * 1000)
+      : 0;
+  const ticks = (now * 10000 + perf).toString();
 
-  // 나머지 9개 문자 생성
-  for (let i = 1; i < length; i++) {
-    if (i === 5) {
-      guid += '{'; // 5번째 위치에 '{' 추가
-    } else {
-      guid += characters[Math.floor(Math.random() * characters.length)];
+  let code = '';
+  for (let i = 0; i < characters.length; i += 2) {
+    if (i + 2 <= ticks.length) {
+      const number = parseInt(ticks.substring(i, i + 2), 10);
+      if (number > characters.length - 1) {
+        const one = parseInt(number.toString().substring(0, 1), 10);
+        const two = parseInt(number.toString().substring(1, 2), 10);
+        code += characters[one];
+        code += characters[two];
+      } else {
+        code += characters[number];
+      }
     }
   }
-
-  return guid;
+  return code;
 };
 
 // 사용 예시: gpHj90h{4U

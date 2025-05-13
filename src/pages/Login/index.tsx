@@ -42,7 +42,9 @@ const Login: React.FC = () => {
 
     setIsLoading(true);
     setError('');
-
+    // 로그인 시도 전 인증 상태 초기화
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('authToken');
     try {
       const loginRequest: LoginRequest = {
         username: credentials.username,
@@ -79,6 +81,9 @@ const Login: React.FC = () => {
         // 대시보드로 이동
         navigate('/dashboard');
       } else {
+        // 로그인 실패 시 인증 상태 제거
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('authToken');
         console.error('로그인 실패:', response.message);
         setError(response.message || '로그인에 실패했습니다. 자격 증명을 확인해주세요.');
       }
@@ -223,10 +228,6 @@ const Login: React.FC = () => {
           >
             {isLoading ? '로그인 중...' : '로그인'}
           </button>
-
-          <div className="text-center text-sm text-gray-400 mt-2">
-            <p>테스트 계정: admin / esl</p>
-          </div>
         </form>
       </div>
     </div>

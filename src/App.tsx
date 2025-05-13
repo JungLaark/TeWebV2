@@ -1,34 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard/index';
 import Login from './pages/Login';
 
 // 인증이 필요한 라우트를 위한 래퍼 컴포넌트
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
-  // localStorage에서 인증 상태 직접 확인
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  
+  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
+  useEffect(() => {
+    const onStorage = () => {
+      setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   if (!isAuthenticated) {
-    // 인증되지 않은 경우 로그인 페이지로 리디렉션
     return <Navigate to="/login" replace />;
   }
-  
   return children;
 };
 
-// 인증된 상태에서 로그인 페이지 접근 방지
 const RequireNonAuth = ({ children }: { children: JSX.Element }) => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  
+  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
+  useEffect(() => {
+    const onStorage = () => {
+      setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   if (isAuthenticated) {
-    // 이미 인증된 경우 대시보드로 리디렉션
     return <Navigate to="/dashboard" replace />;
   }
-  
   return children;
 };
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
+  useEffect(() => {
+    const onStorage = () => {
+      setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   return (
     <BrowserRouter>
       <Routes>
@@ -36,7 +50,7 @@ const App: React.FC = () => {
         <Route 
           path="/" 
           element={
-            localStorage.getItem('isAuthenticated') === 'true' 
+            isAuthenticated 
               ? <Navigate to="/dashboard" replace /> 
               : <Navigate to="/login" replace />
           } 
