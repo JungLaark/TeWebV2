@@ -56,7 +56,7 @@
 .navbar-scrollable-content {
   flex: 1;
   overflow-y: auto;
-  max-height: 100vh;
+  max-height: calc(100vh - 56px); /* 헤더 높이만큼 빼기 */
   scrollbar-width: thin;
   scrollbar-color: #60a5fa #23272f;
   scroll-behavior: smooth;
@@ -83,11 +83,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-height: none;
-  overflow-y: visible;
-  box-shadow: none;
-  scrollbar-width: auto;
-  scrollbar-color: unset;
+
 }
 
 .taglist-wrapper > div[style*="justify-content: flex-end"] {
@@ -166,17 +162,18 @@
   align-items: center;
   min-width: 0;
   max-width: 100%;
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.18s, box-shadow 0.18s, border 0.18s;
+  transition: background 0.2s, box-shadow 0.18s, border 0.18s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 0.5rem;
-  background: #3a4253;
+  margin-bottom: 2px;
+  /* background: #3a4253; */
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   border: 1.5px solid transparent;
+  border-radius: 6px;
   position: relative;
   min-height: 24px;
   height: 28px;
@@ -191,14 +188,17 @@
 }
 
 .template-item .toggle-icon {
-  transition: transform 0.18s;
+  font-size: 1.2em;
+  color: #60a5fa;
+  margin-right: 8px;
+  transition: color 0.2s;
 }
 .template-item .toggle-icon.open {
   transform: rotate(90deg);
 }
 
 .template-item.parent {
-  background: linear-gradient(90deg, #334155 0%, #23272f 100%);
+  background:  #334155;
   font-weight: 700;
   border-left: 4px solid #60a5fa;
   margin-bottom: 0.7rem;
@@ -208,7 +208,7 @@
 .template-item.child {
   border-left: 3px solid #64748b;
   background: #2d3340;
-  margin-left: 8px;
+  margin-left: 1px;
   margin-bottom: 0.35rem;
   position: relative;
   margin-top: 10px;
@@ -418,4 +418,85 @@
 /* flex-1 overflow-y-auto의 스크롤 제거 (부모에서만 스크롤) */
 .flex-1.overflow-y-auto {
   overflow-y: visible !important;
+}
+
+/* 컬러 노드 (최상위) */
+.taglist-color-node {
+  background: #000000;
+  border-bottom: 1px solid #2563eb;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 10px 2px;
+}
+
+.taglist-color-node:not(:first-child) {
+  margin-top: 1.2rem;
+  border-top: 2px solid #60a5fa;
+}
+
+/* 모델 노드 */
+.taglist-model-node {
+  background: #c7d2fe;
+  border-left: 6px solid #2563eb;
+  color: #1e293b;
+  font-weight: 700;
+  padding: 7px 2px;
+}
+/* 방향 노드 */
+.taglist-orientation-node {
+  background: #e0eaff;
+  border-left: 5px solid #60a5fa;
+  color: #2563eb;
+  font-weight: 600;
+  padding-left: 2px;
+}
+
+/* 템플릿 노드 (부모) */
+.taglist-template-node.parent {
+  background: #334155;           /* slate-700, 진한 블루그레이 */
+  border-left: 4px solid #38bdf8;
+  color: #e0e7ef;
+  font-weight: 600;
+  padding-left: 16px;
+}
+
+/* 템플릿 노드 (자식) */
+.taglist-template-node.child {
+  background: #475569;           /* slate-600, 중간 블루그레이 */
+  border-left: 3px solid #a5b4fc;
+  color: #f1f5f9;
+  font-weight: 500;
+  padding-left: 28px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+}
+
+/* 선택 효과 */
+.template-item.template-selected {
+  background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+  color: #fff !important;
+  border-left: 5px solid #1e293b;
+}
+
+/* hover 효과 */
+.template-item:hover {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+.taglist-template-node {
+  background: #f9fafb;
+  border-left: 1px solid #cbd5e1;
+  padding-left: 1px;
+  font-size: 0.97rem;
+}
+.taglist-template-node:hover {
+  background: #e0e7ef;
+}
+
+.taglist-template-node.template-selected {
+  background: #2563eb;
+  color: #fff;
+  border-left: 4px solid #1e293b;
 }
