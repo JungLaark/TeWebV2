@@ -5,12 +5,14 @@ interface PropertyPanelProps {
   selectedObject: TObject | null;  // 타입 변경
   selectedTagName: string | undefined;
   onUpdateObject: (updatedObject: TObject) => void;
+  editMode: boolean; // text 객체
+  setEditMode: (v: boolean) => void; // text 객체
 }
 
 export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   selectedObject,
   selectedTagName,
-  onUpdateObject
+  onUpdateObject,
 }) => {
   // 색상 옵션 결정 함수 수정
   const getColorOptions = () => {
@@ -105,7 +107,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
 
   // 텍스트 객체일 때 추가 속성
   const renderTextProperties = () => {
-    if (selectedObject?.Type !== 'Text') return null;
+    if (selectedObject?.Type !== 'text') return null;
 
     return (
       <div className="space-y-4">
@@ -130,7 +132,6 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
       </div>
     );
   };
-
   return (
     <div className="p-4 text-gray-300">
       <h2 className="text-lg font-semibold mb-4">Properties</h2>

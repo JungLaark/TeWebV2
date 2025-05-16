@@ -1,58 +1,80 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Tag } from 'lucide-react';
-import { useSelector, useDispatch } from 'react-redux';
-import { exportTemplate } from '../../utils/templateExport';
-import { RootState } from '../../store';
-import { addTemplateObjects, setTemplates, setLoading, setError } from '../../store/features/templateSlice';  // 경로 수정
-import { updateTagObjects } from '../../store/features/tagObjectsSlice';  // 경로 수정
-import TagList from '../../components/Navbar/TagList'; // 경로 수정
-import Canvas from '../../components/Canvas'; // 경로 수정
-import { PropertyPanel } from '../../components/PropertyPanel';
-import { Toolbar } from '../../components/Toolbar';
-import DrawingTools from '../../components/DrawingTools'; // DrawingTools import 추가
-import { TLayout, TObject } from '../../types';  // CanvasObjectProperties를 TObject로 변경
-import ManageCSVPopup from '../../components/Popup/ManageCSVPopup';
-import ManageTagsPopup from '../../components/Popup/ManageTagsPopup';
-import { ContextMenuProvider } from '../../components/ContextMenu/ContextMenuProvider';
-import { handleTemplateFileLoad } from '../../utils/fileHandlers'; // 경로 수정
-import { Navbar } from '../../components/Navbar';
-import { isPortrait } from '../../utils/orientationUtils';
-import { OrientationType } from '../../types';
-import { fetchTemplateData } from '../../api/services/template';
-import LoadingOverlay from '../../components/Popup/CommonPopup/LoadingOverlay';
-import TagPropertyPanel from '../../components/PropertyPanel/TagPropertyPanel';
-import TagPropertyModal from '../../components/PropertyPanel/TagPropertyModal';
-import { exportTemplateData } from '../../api/services/template';
-import { setAvailableTags, setSelectedTags } from '../../store/features/selectedTagsSlice';
-import { setBasicMatches } from '../../store/features/templateSlice';
-import { ModelTypeDescription } from '../../types/TLayout';
-import AlertDialog from '../../components/Popup/CommonPopup/AlertDialog';
-import tagList from '../../types/tagList'; // 서버에서 Load 버튼을 눌렀을 때 전체 태그 리스트로 availableTags를 고정
-import { normalizeTemplate } from '../../utils/normalizeTemplate';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { LogOut, Tag } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { exportTemplate } from "../../utils/templateExport";
+import { RootState } from "../../store";
+import {
+  addTemplateObjects,
+  setTemplates,
+  setLoading,
+  setError,
+} from "../../store/features/templateSlice"; // 경로 수정
+import { updateTagObjects } from "../../store/features/tagObjectsSlice"; // 경로 수정
+import TagList from "../../components/Navbar/TagList"; // 경로 수정
+import Canvas from "../../components/Canvas"; // 경로 수정
+import { PropertyPanel } from "../../components/PropertyPanel";
+import { Toolbar } from "../../components/Toolbar";
+import DrawingTools from "../../components/DrawingTools"; // DrawingTools import 추가
+import { TLayout, TObject } from "../../types"; // CanvasObjectProperties를 TObject로 변경
+import ManageCSVPopup from "../../components/Popup/ManageCSVPopup";
+import ManageTagsPopup from "../../components/Popup/ManageTagsPopup";
+import { ContextMenuProvider } from "../../components/ContextMenu/ContextMenuProvider";
+import { handleTemplateFileLoad } from "../../utils/fileHandlers"; // 경로 수정
+import { Navbar } from "../../components/Navbar";
+import { isPortrait } from "../../utils/orientationUtils";
+import { OrientationType } from "../../types";
+import { fetchTemplateData } from "../../api/services/template";
+import LoadingOverlay from "../../components/Popup/CommonPopup/LoadingOverlay";
+import TagPropertyPanel from "../../components/PropertyPanel/TagPropertyPanel";
+import TagPropertyModal from "../../components/PropertyPanel/TagPropertyModal";
+import { exportTemplateData } from "../../api/services/template";
+import {
+  setAvailableTags,
+  setSelectedTags,
+} from "../../store/features/selectedTagsSlice";
+import { setBasicMatches } from "../../store/features/templateSlice";
+import { ModelTypeDescription } from "../../types/TLayout";
+import AlertDialog from "../../components/Popup/CommonPopup/AlertDialog";
+import tagList from "../../types/tagList"; // 서버에서 Load 버튼을 눌렀을 때 전체 태그 리스트로 availableTags를 고정
+import { normalizeTemplate } from "../../utils/normalizeTemplate";
+import {
+  createLine,
+  createRect,
+  createRoundRect,
+  createEllipse,
+  createText,
+  createArrow,
+} from "../../utils/objectFactory"; // 도형 생성 함수 import
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [selectedTag, setSelectedTag] = useState<TLayout | null>(null);  // TagItem을 TLayout으로 변경
+  const [selectedTag, setSelectedTag] = useState<TLayout | null>(null); // TagItem을 TLayout으로 변경
   const [selectedObject, setSelectedObject] = useState<TObject | null>(null); // CanvasObjectProperties를 TObject로 변경
-  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);  // 추가
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]); // 추가
   const [isCSVPopupOpen, setIsCSVPopupOpen] = useState(false);
   const [isManageTagsPopupOpen, setIsManageTagsPopupOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   // draggingObjects 타입 확장: width, height 포함
-  const [draggingObjects, setDraggingObjects] = useState<{[key: string]: {x: number, y: number, width?: number, height?: number}}>({});
+  const [draggingObjects, setDraggingObjects] = useState<{
+    [key: string]: { x: number; y: number; width?: number; height?: number };
+  }>({});
   const [isTagPropertyModalOpen, setIsTagPropertyModalOpen] = useState(false);
   const currentObjectsRef = useRef<TObject[]>([]);
   const [currentObjects, setCurrentObjects] = useState<TObject[]>([]);
 
   const csvMatches = useSelector((state: RootState) => state.template.Matches);
-  const tagObjects = useSelector((state: RootState) => state.tagObjects.tagObjects);
+  const tagObjects = useSelector(
+    (state: RootState) => state.tagObjects.tagObjects
+  );
   const templateState = useSelector((state: RootState) => state.template);
   const isLoading = useSelector((state: RootState) => state.template.isLoading);
-  const selectedTags = useSelector((state: RootState) => state.selectedTags.selectedTags);
+  const selectedTags = useSelector(
+    (state: RootState) => state.selectedTags.selectedTags
+  );
 
-  const [alertMessage, setAlertMessage] = useState('');
+  const [alertMessage, setAlertMessage] = useState("");
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   useEffect(() => {
@@ -60,21 +82,25 @@ const Dashboard: React.FC = () => {
       try {
         dispatch(setLoading(true));
         const res = await fetchTemplateData();
-        console.log('[서버에서 받아온 res]:', res);
+        console.log("[서버에서 받아온 res]:", res);
         // 응답 구조에 맞게 데이터 추출
-        const templates = (res?.data?.[0]?.Templates || []).map(normalizeTemplate);
+        const templates = (res?.data?.[0]?.Templates || []).map(
+          normalizeTemplate
+        );
         const matches = res?.data?.[0]?.Matches?.Basic || [];
-        console.log('[서버에서 받아온 templates]:', templates);
+        console.log("[서버에서 받아온 templates]:", templates);
 
         dispatch(setTemplates(templates));
         dispatch(setBasicMatches(matches));
 
         // tagObjectsSlice도 동기화
-        templates.forEach(t => {
-          dispatch(updateTagObjects({
-            tagName: getTagKey(t),
-            objects: t.Objects || []
-          }));
+        templates.forEach((t) => {
+          dispatch(
+            updateTagObjects({
+              tagName: getTagKey(t),
+              objects: t.Objects || [],
+            })
+          );
         });
 
         if (templates.length > 0) {
@@ -89,21 +115,20 @@ const Dashboard: React.FC = () => {
           setSelectedObjectIds([]);
         }
 
-        console.log('[currentObjects]:', currentObjects);
-        console.log('[selectedTag]:', selectedTag);
-        console.log('[tagObjects]:', tagObjects);
+        console.log("[currentObjects]:", currentObjects);
+        console.log("[selectedTag]:", selectedTag);
+        console.log("[tagObjects]:", tagObjects);
 
-        setAlertMessage('Core/ESN에서 템플릿을 불러왔습니다.');
+        setAlertMessage("Core/ESN에서 템플릿을 불러왔습니다.");
         setIsAlertOpen(true);
-        
       } catch (error) {
-        setAlertMessage('Core/ESN에서 템플릿 불러오기에 실패했습니다.');
+        setAlertMessage("Core/ESN에서 템플릿 불러오기에 실패했습니다.");
         setIsAlertOpen(true);
-      }finally{
+      } finally {
         dispatch(setLoading(false));
       }
     };
-    
+
     loadTemplates();
   }, [dispatch]);
 
@@ -116,12 +141,12 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (isLoading) {
-      document.body.classList.add('loading-overlay-active');
+      document.body.classList.add("loading-overlay-active");
     } else {
-      document.body.classList.remove('loading-overlay-active');
+      document.body.classList.remove("loading-overlay-active");
     }
     return () => {
-      document.body.classList.remove('loading-overlay-active');
+      document.body.classList.remove("loading-overlay-active");
     };
   }, [isLoading]);
 
@@ -146,10 +171,12 @@ const Dashboard: React.FC = () => {
 
   const handleTagSelect = (tag: TLayout) => {
     if (selectedTag) {
-      dispatch(updateTagObjects({
-        tagName: getTagKey(selectedTag),
-        objects: currentObjectsRef.current // 항상 최신값!
-      }));
+      dispatch(
+        updateTagObjects({
+          tagName: getTagKey(selectedTag),
+          objects: currentObjectsRef.current, // 항상 최신값!
+        })
+      );
     }
     setSelectedTag(tag);
     setSelectedObject(null);
@@ -157,145 +184,123 @@ const Dashboard: React.FC = () => {
     // 항상 새로운 배열로 초기화하여 참조 꼬임 방지
     setCurrentObjects(
       (tagObjects[getTagKey(tag)] && [...tagObjects[getTagKey(tag)]]) ||
-      (tag.Objects && [...tag.Objects]) ||
-      []
+        (tag.Objects && [...tag.Objects]) ||
+        []
     );
 
-    console.log('handleTagSelect - currentObjects:', 
+    console.log(
+      "handleTagSelect - currentObjects:",
       (tagObjects[getTagKey(tag)] && [...tagObjects[getTagKey(tag)]]) ||
-      (tag.Objects && [...tag.Objects]) ||
-      []
+        (tag.Objects && [...tag.Objects]) ||
+        []
     );
-
   };
 
   const handleManageTags = () => {
     setIsManageTagsPopupOpen(true);
-  }
+  };
 
-  const handleObjectSelect = (object: TObject | null) => { // CanvasObjectProperties를 TObject로 변경
+  const handleObjectSelect = (object: TObject | null) => {
+    // CanvasObjectProperties를 TObject로 변경
     setSelectedObject(object);
   };
 
   // 객체의 고유 식별자: id가 있으면 id, 없으면 ZOrder(string)
-  const getObjectId = (obj: TObject) => (String(obj.ZOrder));
+  const getObjectId = (obj: TObject) => String(obj.ZOrder);
 
   // 파스칼케이스 변환 함수
-  const toPascalCase = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  const toPascalCase = (str: string) =>
+    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
   const handleAddShape = (type: string) => {
     if (!selectedTag) return;
-    const newObject: TObject = {
-      Type: toPascalCase(type),
-      ZOrder: currentObjects.length,
-      PenWidth: 2,
-      PenColor: "Black",
-      FillColor: "White",
-      IsFilled: false,
-      PosX: (selectedTag.Width - 100) / 2,
-      PosY: (selectedTag.Height - 100) / 2,
-      PosX1: 0,
-      PosY1: 0,
-      Height: 100,
-      Width: 100,
-      Rotation: 0,
-      Font: "Arial, 12pt",
-      Text: null,
-      Align: 0,
-      VAlign: 1,
-      DataName: null,
-      ShowBarcodeLabel: false,
-      ShowBoarder: true,
-      ArcsWidth: 20,
-      Margin: 0,
-      Arrow: 0,
-      ArrowSize: 5,
-      BorderShape: 0,
-      Newline: "",
-      Subject: "",
-      CodeType: 0,
-      Reference: 0,
-      SizeMode: 2,
-      ProductID: 0,
-      MultiFacingMode: false,
-      SingleLine: true,
-      LineHeight: 16,
-      ImageBase64: null
-    };
+    let newObject: TObject;
+
+    switch (type.toLowerCase()) {
+      case "line":
+        newObject = createLine(selectedTag, currentObjects);
+        break;
+      case "rect":
+        newObject = createRect(selectedTag, currentObjects);
+        break;
+      case "roundrect":
+        newObject = createRoundRect(selectedTag, currentObjects);
+        break;
+      case "ellipse":
+        newObject = createEllipse(selectedTag, currentObjects);
+        break;
+      case "arrow":
+        newObject = createArrow(selectedTag, currentObjects);
+        break;
+      default:
+        return;
+    }
     const updatedObjects = [...currentObjects, newObject];
     setCurrentObjects(updatedObjects);
     setSelectedTag({
       ...selectedTag!,
-      Objects: updatedObjects
+      Objects: updatedObjects,
     });
-    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
-    dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
+    dispatch(
+      updateTagObjects({
+        tagName: getTagKey(selectedTag!),
+        objects: updatedObjects,
+      })
+    );
+    dispatch(
+      addTemplateObjects({
+        tagName: getTagKey(selectedTag!),
+        objects: updatedObjects,
+      })
+    );
   };
 
   const handleAddText = () => {
     if (!selectedTag) return;
-    const centerX = (selectedTag.Width - 200) / 2;
-    const centerY = (selectedTag.Height - 30) / 2;
-    const newText: TObject = {
-      Type: "Text",
-      ZOrder: currentObjects.length,
-      PenWidth: 1,
-      PenColor: "Black",
-      FillColor: "White",
-      IsFilled: false,
-      PosX: centerX,
-      PosY: centerY,
-      PosX1: 0,
-      PosY1: 0,
-      Height: 30,
-      Width: 200,
-      Rotation: 0,
-      Font: "Arial, 12pt",
-      Text: "Double click to edit",
-      Align: 0,
-      VAlign: 1,
-      DataName: null,
-      ShowBarcodeLabel: false,
-      ShowBoarder: false,
-      ArcsWidth: 20,
-      Margin: 0,
-      Arrow: 0,
-      ArrowSize: 5,
-      BorderShape: 0,
-      Newline: "",
-      Subject: "",
-      CodeType: 0,
-      Reference: 0,
-      SizeMode: 2,
-      ProductID: 0,
-      MultiFacingMode: false,
-      SingleLine: true,
-      LineHeight: 16,
-      ImageBase64: null
-    };
+    const newText = createText(selectedTag, currentObjects);
     const updatedObjects = [...currentObjects, newText];
     setCurrentObjects(updatedObjects);
     setSelectedTag({
       ...selectedTag!,
-      Objects: updatedObjects
+      Objects: updatedObjects,
     });
-    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
-    dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
+    dispatch(
+      updateTagObjects({
+        tagName: getTagKey(selectedTag!),
+        objects: updatedObjects,
+      })
+    );
+    dispatch(
+      addTemplateObjects({
+        tagName: getTagKey(selectedTag!),
+        objects: updatedObjects,
+      })
+    );
+    // 새로 추가된 텍스트 객체를 선택
+    setSelectedObject(newText);
+    setSelectedObjectIds([String(newText.ZOrder)]);
   };
 
   const handleDeleteObjects = (objectIds: string[]) => {
     if (!selectedTag) return;
-    const updatedObjects = currentObjects.filter(obj => !objectIds.includes(String(obj.ZOrder)));
+    const updatedObjects = currentObjects.filter(
+      (obj) => !objectIds.includes(String(obj.ZOrder))
+    );
     setCurrentObjects(updatedObjects);
-    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+    dispatch(
+      updateTagObjects({
+        tagName: getTagKey(selectedTag),
+        objects: updatedObjects,
+      })
+    );
     setSelectedObject(null);
     setSelectedObjectIds([]);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem("isAuthenticated");
     //window.location.href = '/login';  // navigate 대신 location.href 사용
-    navigate('/login');  // navigate 사용
+    navigate("/login"); // navigate 사용
   };
 
   const handleManageCSV = () => {
@@ -313,9 +318,9 @@ const Dashboard: React.FC = () => {
       Templates: {
         Objects: Object.entries(tagObjects).map(([tagName, objects]) => ({
           tagName,
-          objects
-        }))
-      }
+          objects,
+        })),
+      },
     };
 
     exportTemplate(exportData);
@@ -324,18 +329,23 @@ const Dashboard: React.FC = () => {
   const handleLoadTemplate = async () => {
     const templateData = await handleTemplateFileLoad();
     if (templateData) {
-      console.log('Loaded template data:', templateData); // 디버깅용 로그 추가
+      console.log("Loaded template data:", templateData); // 디버깅용 로그 추가
     }
   };
 
   // PropertyPanel에 넘길 객체를 드래그 중이면 draggingObjects의 좌표로 가공
   const getPanelObject = () => {
     if (!selectedObject) return null;
-    if (isDragging && draggingObjects && selectedObject.id && draggingObjects[selectedObject.id]) {
+    if (
+      isDragging &&
+      draggingObjects &&
+      selectedObject.id &&
+      draggingObjects[selectedObject.id]
+    ) {
       return {
         ...selectedObject,
         PosX: draggingObjects[selectedObject.id].x,
-        PosY: draggingObjects[selectedObject.id].y
+        PosY: draggingObjects[selectedObject.id].y,
       };
     }
     return selectedObject;
@@ -360,9 +370,13 @@ const Dashboard: React.FC = () => {
   const handleUpdateTag = (updated: TLayout) => {
     setSelectedTag(updated);
     // 템플릿/스토어에도 반영
-    dispatch(setTemplates(
-      templateState.templates.map(t => t.Guid === updated.Guid ? updated : t)
-    ));
+    dispatch(
+      setTemplates(
+        templateState.templates.map((t) =>
+          t.Guid === updated.Guid ? updated : t
+        )
+      )
+    );
   };
 
   const handleOpenTagPropertyModal = () => {
@@ -372,17 +386,26 @@ const Dashboard: React.FC = () => {
     setIsTagPropertyModalOpen(false);
   };
 
-  
-
   const handleAddSubTag = (parentTagName: string, newLayout: TLayout) => {
-    console.log('[handleAddSubTag] before:', templateState.templates);
+    console.log("[handleAddSubTag] before:", templateState.templates);
     dispatch(setTemplates([...templateState.templates, newLayout]));
     // 새로 추가된 템플릿의 width/height가 selectedTags에 없으면 추가
-    if (!selectedTags.some(tag => tag.width === newLayout.Width && tag.height === newLayout.Height)) {
-      dispatch(setSelectedTags([
-        ...selectedTags,
-        { name: newLayout.Name, width: newLayout.Width, height: newLayout.Height }
-      ]));
+    if (
+      !selectedTags.some(
+        (tag) =>
+          tag.width === newLayout.Width && tag.height === newLayout.Height
+      )
+    ) {
+      dispatch(
+        setSelectedTags([
+          ...selectedTags,
+          {
+            name: newLayout.Name,
+            width: newLayout.Width,
+            height: newLayout.Height,
+          },
+        ])
+      );
     }
     setSelectedTag(newLayout);
     setSelectedObject(null);
@@ -397,27 +420,31 @@ const Dashboard: React.FC = () => {
       dispatch(setLoading(true));
       const res = await fetchTemplateData();
       //const templates = res?.data?.[0]?.Templates || [];
-      const templates = (res?.data?.[0]?.Templates || []).map(normalizeTemplate);
+      const templates = (res?.data?.[0]?.Templates || []).map(
+        normalizeTemplate
+      );
       const matches = res?.data?.[0]?.Matches?.Basic || [];
 
       dispatch(setTemplates(templates));
       dispatch(setBasicMatches(matches));
 
       // tagObjects 동기화 후 selectedTag/currentObjects 세팅
-      templates.forEach(t => {
-        dispatch(updateTagObjects({
-          tagName: getTagKey(t),
-          objects: t.Objects || []
-        }));
+      templates.forEach((t) => {
+        dispatch(
+          updateTagObjects({
+            tagName: getTagKey(t),
+            objects: t.Objects || [],
+          })
+        );
       });
 
       // availableTags는 항상 전체 tagList로 고정
       dispatch(setAvailableTags(tagList));
       // selectedTags만 서버 데이터에 맞게 갱신
-      const tagArr = templates.map(t => ({
+      const tagArr = templates.map((t) => ({
         name: ModelTypeDescription[t.Model],
         width: t.Width,
-        height: t.Height
+        height: t.Height,
       }));
       dispatch(setSelectedTags(tagArr));
 
@@ -436,12 +463,12 @@ const Dashboard: React.FC = () => {
         }
       }, 0);
 
-      setAlertMessage('Core/ESN에서 템플릿을 불러왔습니다.');
+      setAlertMessage("Core/ESN에서 템플릿을 불러왔습니다.");
       setIsAlertOpen(true);
     } catch (error) {
-      setAlertMessage('Core/ESN에서 템플릿 불러오기에 실패했습니다.');
+      setAlertMessage("Core/ESN에서 템플릿 불러오기에 실패했습니다.");
       setIsAlertOpen(true);
-      console.log('Error loading template from Core/ESN:', error);
+      console.log("Error loading template from Core/ESN:", error);
     } finally {
       dispatch(setLoading(false));
     }
@@ -450,12 +477,12 @@ const Dashboard: React.FC = () => {
   // 2. Send: MakeExportJson 구조 참고하여 exportTemplateData로 전송
   const handleSendToCoreESN = async () => {
     try {
+      const fixNumber = (v: any) =>
+        typeof v === "number" && isFinite(v) ? Math.round(Math.max(0, v)) : 0;
 
-      const fixNumber = (v: any) => (typeof v === 'number' && isFinite(v) ? Math.round(Math.max(0, v)) : 0);
-
-      const syncedTemplates = templateState.templates.map(t => {
+      const syncedTemplates = templateState.templates.map((t) => {
         const tagKey = getTagKey(t);
-        const objects = (tagObjects[tagKey] ?? t.Objects).map(obj => ({
+        const objects = (tagObjects[tagKey] ?? t.Objects).map((obj) => ({
           ...obj,
           PosX: fixNumber(obj.PosX),
           PosY: fixNumber(obj.PosY),
@@ -467,7 +494,7 @@ const Dashboard: React.FC = () => {
         }));
         return {
           ...t,
-          Objects: objects
+          Objects: objects,
         };
       });
 
@@ -475,25 +502,25 @@ const Dashboard: React.FC = () => {
       const exportPayload = {
         Matches: {
           Basic: templateState.Matches?.Basic ?? [],
-          Special: templateState.Matches?.Special ?? []
+          Special: templateState.Matches?.Special ?? [],
         },
         //Templates: templateState.templates
-        Templates: syncedTemplates
+        Templates: syncedTemplates,
       };
 
-      console.log('[템플릿 전송 데이터]:',JSON.stringify(exportPayload));
+      console.log("[템플릿 전송 데이터]:", JSON.stringify(exportPayload));
 
       await exportTemplateData(exportPayload);
-      setAlertMessage('템플릿이 Core/ESN으로 전송되었습니다.');
+      setAlertMessage("템플릿이 Core/ESN으로 전송되었습니다.");
       setIsAlertOpen(true);
     } catch (error) {
-      setAlertMessage('템플릿 전송에 실패했습니다.');
+      setAlertMessage("템플릿 전송에 실패했습니다.");
       setIsAlertOpen(true);
-      console.error('Error sending template to Core/ESN:', error);
+      console.error("Error sending template to Core/ESN:", error);
     }
   };
 
-  console.log('Canvas에 전달되는 currentObjects:', currentObjects);
+  console.log("Canvas에 전달되는 currentObjects:", currentObjects);
 
   // 드래그 종료(마우스 업) 시 Redux에 동기화
   const handleCanvasMouseUp = (updatedObjects: TObject[]) => {
@@ -501,10 +528,20 @@ const Dashboard: React.FC = () => {
       setCurrentObjects(updatedObjects); // 1. 로컬 상태 먼저 갱신
       setSelectedTag({
         ...selectedTag,
-        Objects: updatedObjects
+        Objects: updatedObjects,
       });
-      dispatch(updateTagObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
-      dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag), objects: updatedObjects }));
+      dispatch(
+        updateTagObjects({
+          tagName: getTagKey(selectedTag),
+          objects: updatedObjects,
+        })
+      );
+      dispatch(
+        addTemplateObjects({
+          tagName: getTagKey(selectedTag),
+          objects: updatedObjects,
+        })
+      );
     }
     setIsDragging(false);
   };
@@ -516,13 +553,13 @@ const Dashboard: React.FC = () => {
         <header>
           <Toolbar
             onManageCSV={handleManageCSV}
-            onManageFonts={() => console.log('Fonts')}
-            onManageImageCodes={() => console.log('Images')}
-            onManageReservations={() => console.log('Reservations')}
+            onManageFonts={() => console.log("Fonts")}
+            onManageImageCodes={() => console.log("Images")}
+            onManageReservations={() => console.log("Reservations")}
             onLoadTemplate={handleLoadTemplate} // handleLoadTemplate 연결
-            onMergeTemplates={() => console.log('Merge')}
+            onMergeTemplates={() => console.log("Merge")}
             onSaveTemplate={handleSaveTemplate}
-            onExportBitmap={() => console.log('Export')}
+            onExportBitmap={() => console.log("Export")}
             onSendToCoreESN={handleSendToCoreESN} // Toolbar에 연결
             onLoadFromCoreESN={handleLoadFromCoreESN} // Toolbar에 연결
             onLogout={handleLogout}
@@ -534,8 +571,8 @@ const Dashboard: React.FC = () => {
           {/* Left Sidebar - TagList */}
           <div className="w-[340px] flex flex-col border-r border-gray-700">
             <div className="flex-1 overflow-y-auto">
-              <Navbar 
-                onSelectTag={handleTagSelect} 
+              <Navbar
+                onSelectTag={handleTagSelect}
                 selectedTag={selectedTag?.Name}
                 onManageTags={handleManageTags} // 태그 관리 함수 연결
                 handleAddSubTag={handleAddSubTag} // 전달 (props로 내려주기)
@@ -546,8 +583,7 @@ const Dashboard: React.FC = () => {
           {/* Right - Canvas */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 flex items-center justify-center">
-              
-              {selectedTag ? (  
+              {selectedTag ? (
                 <Canvas
                   width={selectedTag.Width}
                   height={selectedTag.Height}
@@ -557,11 +593,21 @@ const Dashboard: React.FC = () => {
                     setCurrentObjects(updatedObjects);
                     setSelectedTag({
                       ...selectedTag!,
-                      Objects: updatedObjects
+                      Objects: updatedObjects,
                     });
                     // Redux 동기화는 드래그 종료 시에만 수행
-                    dispatch(updateTagObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
-                    dispatch(addTemplateObjects({ tagName: getTagKey(selectedTag!), objects: updatedObjects }));
+                    dispatch(
+                      updateTagObjects({
+                        tagName: getTagKey(selectedTag!),
+                        objects: updatedObjects,
+                      })
+                    );
+                    dispatch(
+                      addTemplateObjects({
+                        tagName: getTagKey(selectedTag!),
+                        objects: updatedObjects,
+                      })
+                    );
                   }}
                   onObjectSelect={handleObjectSelect}
                   selectedObjectIds={selectedObjectIds}
@@ -576,7 +622,9 @@ const Dashboard: React.FC = () => {
                   onMouseUp={handleCanvasMouseUp}
                 />
               ) : (
-                <div className="text-gray-500">Select a tag to start editing</div>
+                <div className="text-gray-500">
+                  Select a tag to start editing
+                </div>
               )}
             </div>
           </div>
@@ -587,17 +635,23 @@ const Dashboard: React.FC = () => {
               onUpdateObject={(updatedObject) => {
                 if (!selectedTag) return;
                 const currentObjects = tagObjects[getTagKey(selectedTag)] || [];
-                const updatedObjects = currentObjects.map(obj =>
-                  getObjectId(obj) === getObjectId(updatedObject) ? updatedObject : obj
+                const updatedObjects = currentObjects.map((obj) =>
+                  getObjectId(obj) === getObjectId(updatedObject)
+                    ? updatedObject
+                    : obj
                 );
-                dispatch(updateTagObjects({ 
-                  tagName: getTagKey(selectedTag), 
-                  objects: updatedObjects 
-                }));
-                dispatch(addTemplateObjects({ 
-                  tagName: getTagKey(selectedTag), 
-                  objects: updatedObjects 
-                }));
+                dispatch(
+                  updateTagObjects({
+                    tagName: getTagKey(selectedTag),
+                    objects: updatedObjects,
+                  })
+                );
+                dispatch(
+                  addTemplateObjects({
+                    tagName: getTagKey(selectedTag),
+                    objects: updatedObjects,
+                  })
+                );
                 setSelectedObject(updatedObject);
               }}
             />
@@ -606,14 +660,11 @@ const Dashboard: React.FC = () => {
 
         {/* Footer */}
         <footer className="border-t border-gray-700">
-          <DrawingTools 
-            onAddShape={handleAddShape}
-            onAddText={handleAddText}
-          />
+          <DrawingTools onAddShape={handleAddShape} onAddText={handleAddText} />
         </footer>
 
         {/* Add CSV Popup */}
-        <ManageCSVPopup 
+        <ManageCSVPopup
           isOpen={isCSVPopupOpen}
           onClose={() => setIsCSVPopupOpen(false)}
         />
@@ -623,8 +674,10 @@ const Dashboard: React.FC = () => {
           onClose={() => setIsManageTagsPopupOpen(false)}
           orientation={
             selectedTag
-              ? (isPortrait(selectedTag.Model) ? 'vertical' : 'horizontal')
-              : 'horizontal'
+              ? isPortrait(selectedTag.Model)
+                ? "vertical"
+                : "horizontal"
+              : "horizontal"
           }
         />
         <LoadingOverlay isOpen={isLoading} />
