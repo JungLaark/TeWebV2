@@ -10,6 +10,13 @@ interface CanvasProps {
   onObjectSelect: (objectId: string) => void;
   selectedObjectIds: string[];
   setSelectedObjectIds: (ids: string[]) => void;
+  editingTextId: string | null;
+  editingTextValue: string;
+  editingTextPos: {x: number, y: number, width: number, height: number} | null;
+  setEditingTextId: (id: string | null) => void;
+  setEditingTextValue: (value: string) => void;
+  setEditingTextPos: (pos: {x: number, y: number, width: number, height: number} | null) => void;
+  onUpdateTextObject: (id: string, text: string) => void;
 }
 
 const Canvas: React.FC<CanvasProps> = ({ 
@@ -19,7 +26,14 @@ const Canvas: React.FC<CanvasProps> = ({
   onUpdateObjects,
   onObjectSelect,
   selectedObjectIds,
-  setSelectedObjectIds 
+  setSelectedObjectIds,
+  editingTextId,
+  editingTextValue,
+  editingTextPos,
+  setEditingTextId,
+  setEditingTextValue,
+  setEditingTextPos,
+  onUpdateTextObject 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -82,8 +96,7 @@ const Canvas: React.FC<CanvasProps> = ({
       onMouseLeave={onMouseUp}
     >
       <div 
-        className="canvas-wrapper"
-      >
+        className="canvas-wrapper">
         <canvas
           ref={canvasRef}
           width={width}
@@ -97,6 +110,39 @@ const Canvas: React.FC<CanvasProps> = ({
             cursor: getCursor()
           }}
         />
+        {editingTextId && editingTextPos && (
+          <input
+            style={{
+              position: 'absolute',
+              left: editingTextPos.x,
+              top: editingTextPos.y,
+              width: editingTextPos.width,
+              height: editingTextPos.height,
+              font: 'inherit',
+              zIndex: 100,
+              background: 'transparent',
+              color: '#000',
+              border: '1px solid #888',
+            }}
+            value={editingTextValue}
+            autoFocus
+            onChange={e => setEditingTextValue(e.target.value)}
+            onBlur={() => {
+              onUpdateTextObject(editingTextId, editingTextValue);
+              setEditingTextId(null);
+              setEditingTextPos(null);
+
+              console.log('onBlur');
+            }}
+            onKeyDown={e => {
+              if(e.key === 'Enter')
+                e.currentTarget.blur();
+
+              console.log('onKeyDown');
+            }}
+            />
+
+        )}
         {selectionBox.start && selectionBox.end && (
           <div
             className="selection-box"

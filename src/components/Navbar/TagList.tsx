@@ -271,13 +271,13 @@ function renderTree(
           <span className="font-bold" title={node.name}>
             {depth === 0 && <span style={{ marginRight: 4 }}>🎨</span>}
             {depth === 1 && <span style={{ marginRight: 4 }}>📱</span>}
+            {depth >= 3 && <span style={{ marginRight: 4 }}>🏷️</span>}
             {node.name.length > 18 ? node.name.slice(0, 16) + "…" : node.name}
             {depth === 2 && (
               <span style={{ marginRight: 4 }}>
                 {node.name === "가로" ? "  ↔" : "   ↕"}
               </span>
             )}
-            {depth >= 3 && <span style={{ marginRight: 4 }}>🏷️</span>}
           </span>
           {node.data && (
             <span className="text-xs text-gray-400 ml-2">
@@ -330,10 +330,10 @@ const TagList: React.FC<TagListProps> = ({
       (tag) => tpl.Width === tag.width && tpl.Height === tag.height
     )
   );
+  console.log("[filteredTemplates]:", filteredTemplates);
   // 전체 템플릿으로 트리 생성
   const tree = buildWinformStyleTree(filteredTemplates);
 
-  console.log("[TagList] tree:", tree);
 
   // 아코디언 상태 관리
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});

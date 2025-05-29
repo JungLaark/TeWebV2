@@ -77,6 +77,12 @@ const Dashboard: React.FC = () => {
   const [alertMessage, setAlertMessage] = useState("");
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
+  //text 객체 텍스트 편집 모드
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [editingTextValue, setEditingTextValue] = useState<string>("");
+  const [editingTextPos, setEditingTextPos] = useState<{x: number, y: number, width: number, height: number} | null>(null);
+
+
   useEffect(() => {
     const loadTemplates = async () => {
       try {
@@ -279,6 +285,19 @@ const Dashboard: React.FC = () => {
     // 새로 추가된 텍스트 객체를 선택
     setSelectedObject(newText);
     setSelectedObjectIds([String(newText.ZOrder)]);
+
+    // 텍스트 편집모드 전환
+    setEditingTextId(String(newText.ZOrder));
+    setEditingTextValue(newText.Text || "");
+    setEditingTextPos({
+      x: newText.PosX,
+      y: newText.PosY,
+      width: newText.Width,
+      height: newText.Height,
+    })
+
+    console.log('[handleAddText]');
+
   };
 
   const handleDeleteObjects = (objectIds: string[]) => {
@@ -620,6 +639,20 @@ const Dashboard: React.FC = () => {
                   draggingObjects={draggingObjects}
                   setDraggingObjects={setDraggingObjects}
                   onMouseUp={handleCanvasMouseUp}
+                  editingTextId={editingTextId}
+                  editingTextValue={editingTextValue}
+                  editingTextPos={editingTextPos}
+                  setEditingTextValue={setEditingTextValue}
+                  setEditingTextId={setEditingTextId}
+                  setEditingTextPos={setEditingTextPos}
+                  onUpdateTextObject={(id, text) => {
+                    //텍스트 객체 업데이트
+                    const updated = currentObjects.map(obj => 
+                      String(obj.ZOrder) === id ? { ...obj, Text: text } : obj);
+                      setCurrentObjects(updated);
+
+                      console.log("[Updated text object]:", updated);
+                  }}
                 />
               ) : (
                 <div className="text-gray-500">
